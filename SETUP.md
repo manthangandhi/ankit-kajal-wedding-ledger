@@ -1,25 +1,12 @@
-# Set up and host the Wedding Desk
+# Wedding Planner setup
 
-The tracker is a static website. Supabase stores the records and signs users in. No wedding team member needs to create a Sheet or database account.
+## Supabase
 
-## Supabase database
+The static site uses Supabase for sign in, account roles and the six wedding record tables: `departments`, `tasks`, `events`, `guests`, `vendors` and `payments`.
 
-The app uses six separate record tables: `tasks`, `events`, `departments`, `guests`, `vendors` and `payments`. `profiles` stores account roles. The SQL also creates starter departments and wedding events, and enables row-level security.
-
-1. Open the project’s Supabase **SQL Editor**.
-2. Run [`supabase/schema.sql`](./supabase/schema.sql).
-3. If the SQL editor reports an error, stop and share the error before rerunning or changing policies.
-
-The app uses only those six record tables. The connected project also has optional `issues`, `inventory` and `transport` tables plus an older `wedding_records` table. I can’t read their row counts with the public website key, so I did not remove them blindly. After taking a private backup, run [`supabase/cleanup_unused_tables.sql`](./supabase/cleanup_unused_tables.sql). It drops only tables that are empty and reports any tables it keeps because they contain data.
-
-## Account access
-
-Email auto-confirm is already enabled in the connected Supabase project, so sign-up should not require inbox confirmation. New accounts still begin as `pending`; an admin must approve them before they can see wedding data.
-
-To create the first admin:
-
-1. Open the site and sign up with the owner’s email.
-2. In Supabase SQL Editor, replace the example address and run:
+1. Open the project's Supabase SQL Editor and run [`supabase/schema.sql`](./supabase/schema.sql).
+2. Sign up with the owner's email from the app.
+3. In Supabase SQL Editor, promote the owner by replacing the example email and running:
 
    ```sql
    update public.profiles as p
@@ -29,41 +16,30 @@ To create the first admin:
      and lower(u.email) = lower('owner@example.com');
    ```
 
-3. Sign in again. Under **People & access**, the admin can grant `viewer`, `editor` or `admin` access.
+New signups remain pending until an admin assigns viewer, editor or admin access. Email auto-confirm is enabled in the current Supabase project.
 
-Viewers can read. Editors can create, change and delete wedding records. Admins can also manage account roles. Row-level security enforces these permissions in Supabase.
+The project URL and publishable key are in [`public/supabase-config.js`](./public/supabase-config.js). They are browser-visible values; never add a service-role key or database password.
 
-## Website configuration
+## Vercel project settings
 
-The project URL and publishable key are stored in [`public/supabase-config.js`](./public/supabase-config.js). They are public browser values. Never put a service-role key or database password there.
+`vercel.json` is ready for a static deployment from the repository root:
 
-The current signup confirmation setting is already off. If that changes later, Supabase Dashboard → **Authentication → Sign In / Providers → Email** → switch off **Confirm email**. The public app key cannot change this project setting.
+- Framework preset: **Other**
+- Root directory: `./`
+- Build command: leave blank
+- Install command: leave blank
+- Output directory: `public`
+- Production branch: `main`
 
-## Migrate the existing Sheet
+Import `manthangandhi/ankit-kajal-wedding-ledger` in Vercel. After Vercel assigns the project domain, open Supabase **Authentication → URL Configuration**. Set the Vercel domain as the Site URL and add `https://YOUR-PROJECT.vercel.app/**` under Redirect URLs. Keep the GitHub Pages URL in the allowlist while both hosts are in use.
 
-1. Open [`public/legacy.html`](./public/legacy.html) on the existing site.
-2. Download the latest Sheet data and export a JSON backup. Keep it private.
-3. Sign into the new app as an approved editor or admin and import the JSON under **Settings & backup**.
+The Vercel account is not connected to this workspace, so creating the project and adding the Supabase redirect must be done while signed in to your Vercel and Supabase dashboards. No build-time secrets are required for this static app.
 
-The simple tracker imports tasks, events, departments, guests, vendors and payments. If the old backup contains issue, inventory or transport records, those remain in the original JSON and Sheet; the import will tell you how many it skips. Keep the old Sheet and backup until the new data is confirmed.
-
-## Preview locally
+## Local preview
 
 ```sh
 cd public
 python3 -m http.server 4173 --bind 127.0.0.1
 ```
 
-Open `http://127.0.0.1:4173/`.
-
-## Vercel hosting
-
-The repo has a `vercel.json` that serves only the `public/` directory. To deploy:
-
-1. In Vercel, choose **Add New → Project** and import `manthangandhi/ankit-kajal-wedding-ledger` from GitHub.
-2. Keep the project root as `./`; use the static/Other framework preset, no build command, and `public` as the output directory.
-3. Deploy. Vercel will provide a `*.vercel.app` address.
-4. Add the Vercel URL to Supabase **Authentication → URL Configuration → Redirect URLs**. Set it as the Site URL if Vercel becomes the main address.
-5. Confirm sign-up, admin approval and a record update on Vercel before switching anyone away from GitHub Pages.
-
-Vercel account access is not connected to this workspace, so the project import and deploy must be authorized in your Vercel account. Keep GitHub Pages live as a fallback until the Vercel URL is verified.
+Open <http://127.0.0.1:4173/>. The installable app and offline shell require HTTPS or localhost.

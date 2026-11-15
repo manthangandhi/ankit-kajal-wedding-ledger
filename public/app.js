@@ -120,7 +120,7 @@ function setAuthMode(mode) {
   $("signin-form").hidden = signup;
   $("signup-form").hidden = !signup;
   $("auth-kicker").textContent = signup ? "JOIN THE WEDDING TEAM" : "WELCOME BACK";
-  $("auth-heading").innerHTML = signup ? "A place for every<br>helping hand." : "Sign in to your<br>shared workspace.";
+  $("auth-heading").innerHTML = signup ? "A place for every<br>helping hand." : "Your plans, all<br>in one place.";
   $("auth-subtitle").textContent = signup
     ? "Request an account. A wedding admin will approve access."
     : "Use your email and password to continue.";
@@ -151,7 +151,7 @@ function showSetupNeeded() {
   $("signup-form").hidden = true;
   $("auth-switch").hidden = true;
   $("setup-message").hidden = false;
-  $("setup-message").innerHTML = 'The shared database is not connected yet. Create the Supabase project, run <code>supabase/schema.sql</code>, then add its project URL and publishable key to <code>supabase-config.js</code>. Follow <a href="./SETUP.md">the setup guide</a>. This site keeps wedding records locked until the database is configured.';
+  $("setup-message").innerHTML = 'The wedding planner is not connected yet. Create the Supabase project, run <code>supabase/schema.sql</code>, then add its project URL and publishable key to <code>supabase-config.js</code>. Follow <a href="./SETUP.md">the setup guide</a>. Wedding records stay private until the database is configured.';
 }
 
 async function loadMembership(user) {
@@ -217,7 +217,7 @@ async function fetchRecords(quiet = false) {
     listData[type].sort((a, b) => String(a.name || a.title || a.item || "").localeCompare(String(b.name || b.title || b.item || "")));
   }
   renderPage();
-  if (!quiet) $("sync-status").innerHTML = "<i></i> Shared workspace";
+  if (!quiet) $("sync-status").innerHTML = "<i></i> Your wedding plan is up to date";
 }
 
 function subscribeToChanges() {
@@ -281,7 +281,7 @@ function renderDashboard() {
   const upcoming = [...listData.events].filter((event) => event.date && new Date(event.date) >= today).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
   const noData = RECORD_TYPES.every((type) => listData[type].length === 0);
   return `
-    <section class="overview-cover"><div class="cover-copy"><p class="eyebrow-small">ANKIT & KAJAL · THE WEDDING DESK</p><h2>A day made of<br><em>many moments.</em></h2><p>One thoughtful place for the plans, people and little details that bring everyone together.</p><div class="cover-actions"><button class="button button-primary" type="button" data-view="events">View the run sheet <span aria-hidden="true">→</span></button><button class="cover-text-link" type="button" data-view="tasks">See this week’s tasks</button></div></div><div class="cover-art" aria-label="Illustrations for Haldi, Sangeet and the wedding"><img class="cover-art-haldi" src="./assets/haldi.svg" alt="Haldi celebration illustration"><img class="cover-art-sangeet" src="./assets/sangeet.svg" alt="Sangeet celebration illustration"><img class="cover-art-shaadi" src="./assets/shaadi.svg" alt="Wedding ceremony illustration"><span class="cover-art-seal">A <i>&</i> K</span></div><span class="cover-edition">A FAMILY CELEBRATION · GUJARAT, INDIA</span></section>
+    <section class="overview-cover"><div class="cover-copy"><p class="eyebrow-small">ANKIT & KAJAL · WEDDING PLANNER</p><h2>A day made of<br><em>many moments.</em></h2><p>One thoughtful place for the plans, people and little details that bring everyone together.</p><div class="cover-actions"><button class="button button-primary" type="button" data-view="events">View the run sheet <span aria-hidden="true">→</span></button><button class="cover-text-link" type="button" data-view="tasks">See this week’s tasks</button></div></div><div class="cover-art" aria-label="Illustrations for Haldi, Sangeet and the wedding"><img class="cover-art-haldi" src="./assets/haldi.svg" alt="Haldi celebration illustration"><img class="cover-art-sangeet" src="./assets/sangeet.svg" alt="Sangeet celebration illustration"><img class="cover-art-shaadi" src="./assets/shaadi.svg" alt="Wedding ceremony illustration"></div><span class="cover-edition">A FAMILY CELEBRATION · GUJARAT, INDIA</span></section>
     ${noData ? `<div class="first-run"><div class="first-run-heading"><span class="first-run-number">01</span><div><p class="eyebrow-small">A GOOD PLACE TO BEGIN</p><h3>Let’s bring the plan together.</h3><p>Add the confirmed celebrations, invite your family team, then share the next tasks.</p></div></div><div class="first-run-actions"><button class="button button-primary" data-view="events" type="button">Add event dates <span aria-hidden="true">→</span></button><button class="button button-secondary" data-view="departments" type="button">Meet the team</button><button class="button button-secondary" data-view="tasks" type="button">Create first task</button></div></div>` : ""}
     <div class="overview-section-intro"><div><p class="eyebrow-small">YOUR WEEKLY BRIEF</p><h3>What needs a little attention?</h3></div><button class="text-link" data-view="tasks" type="button">Open all tasks&nbsp; →</button></div>
     <div class="attention-grid"><section class="attention-main">
@@ -319,7 +319,8 @@ function renderEventList() {
     <div class="records-toolbar"><input class="search-input" id="record-search" type="search" placeholder="Find an event…" value="${escapeHTML(searchTerm)}" aria-label="Search events"><span class="record-count">${events.length} ${events.length === 1 ? "event" : "events"}</span></div>
     <div class="run-sheet">${events.length ? events.map((event, index) => {
       const callNumber = String(event.phone || "").replace(/[^+\d]/g, "");
-      return `<article class="run-event"><div class="run-event-marker"><span>${String(index + 1).padStart(2, "0")}</span></div><div class="run-event-body"><div class="run-event-heading"><div><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div><span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span><img class="run-event-art" src="${eventIllustration(event)}" alt="" loading="lazy"></div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div></article>`;
+      const art = eventIllustration(event);
+      return `<article class="run-event"><div class="run-event-marker"><span>${String(index + 1).padStart(2, "0")}</span></div><div class="run-event-body"><div class="run-event-heading"><div><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div><span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span>${art ? `<img class="run-event-art" src="${art}" alt="" loading="lazy">` : ""}</div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div></article>`;
     }).join("") : `<p class="empty-copy">${searchTerm ? "No matching events." : "No events added yet. Add the real dates and venues when they are confirmed."}</p>`}</div>`;
 }
 
@@ -327,14 +328,17 @@ function eventCard(event) {
   const date = event.date ? new Date(event.date) : null;
   const day = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-IN", { day: "2-digit" }) : "—";
   const month = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-IN", { month: "short" }) : "DATE";
-  return `<div class="event-row"><img src="${eventIllustration(event)}" alt="" loading="lazy"><span class="event-date"><b>${day}</b><small>${escapeHTML(month)}</small></span><span><b>${escapeHTML(event.name || "Wedding event")}</b><small>${escapeHTML(event.venue || "Venue to be confirmed")}</small></span></div>`;
+  const art = eventIllustration(event);
+  return `<div class="event-row">${art ? `<img src="${art}" alt="" loading="lazy">` : `<span class="event-art-placeholder" aria-hidden="true">${escapeHTML((event.name || "E").slice(0, 1))}</span>`}<span class="event-date"><b>${day}</b><small>${escapeHTML(month)}</small></span><span><b>${escapeHTML(event.name || "Wedding event")}</b><small>${escapeHTML(event.venue || "Venue to be confirmed")}</small></span></div>`;
 }
 
 function eventIllustration(event) {
   const name = String(event?.name || "").toLowerCase();
-  if (name.includes("haldi") || name.includes("mehendi") || name.includes("mehndi")) return "./assets/haldi.svg";
+  if (name.includes("baraat")) return "./assets/baraat.webp";
+  if (name.includes("haldi")) return "./assets/haldi.svg";
   if (name.includes("sangeet") || name.includes("music")) return "./assets/sangeet.svg";
-  return "./assets/shaadi.svg";
+  if (name.includes("shaadi") || name.includes("wedding") || name.includes("ceremony")) return "./assets/shaadi.svg";
+  return "";
 }
 
 function titleFor(type) {
@@ -362,7 +366,7 @@ function sectionDescription(type) {
     events: "Dates, venues, captains and the run of show.",
     guests: "RSVPs, rooms and arrivals for the people you love.",
     vendors: "Contacts, commitments and reporting details.",
-    payments: "A shared view of planned costs, advances and balances.",
+    payments: "Track agreed costs, advances and balances.",
   }[type] || "Wedding team records.";
 }
 
@@ -397,10 +401,10 @@ function currency(value) {
 }
 
 function renderSettings() {
-  return `<header class="page-heading"><div><p class="eyebrow-small">YOUR WORKSPACE</p><h2>Settings & backup</h2><p>Keep a copy of the wedding records and bring across the data from the old tracker.</p></div></header>
-    <div class="warning-box">This website uses Supabase for shared records. Do not put a database password or service-role key in the website. The browser key is public and relies on the database policies installed by the setup script.</div>
-    <div class="settings-grid"><section class="panel"><h3>Download a backup</h3><p>Save the current shared records as a JSON file. Keep backups somewhere private because guest and vendor information may be included.</p><button class="button button-secondary" id="export-json" type="button">Download JSON backup</button></section>
-    ${canEdit() ? `<section class="panel"><h3>Import existing records</h3><p>Import the JSON backup from the current wedding tracker. Existing records with the same IDs will be updated in the shared database.</p><input class="file-input" id="import-json" type="file" accept=".json,application/json"><button class="button button-primary" id="import-button" type="button">Import backup</button></section>` : ""}
+  return `<header class="page-heading"><div><p class="eyebrow-small">YOUR ACCOUNT</p><h2>Settings & backup</h2><p>Keep a private copy of the wedding plans and manage your account access.</p></div></header>
+    <div class="warning-box">Only approved wedding team members can see the guest, vendor and budget details recorded here.</div>
+    <div class="settings-grid"><section class="panel"><h3>Download a backup</h3><p>Save a private copy of the wedding records. Guest and vendor details may be included.</p><button class="button button-secondary" id="export-json" type="button">Download JSON backup</button></section>
+    ${canEdit() ? `<section class="panel"><h3>Import a backup</h3><p>Import a JSON backup into the wedding planner. Records with matching IDs will be updated.</p><input class="file-input" id="import-json" type="file" accept=".json,application/json"><button class="button button-primary" id="import-button" type="button">Import backup</button></section>` : ""}
     <section class="panel"><h3>Account access</h3><p>Signed in as <strong>${escapeHTML(currentProfile?.email || currentUser?.email || "")}</strong>. Your current role is <strong>${escapeHTML(currentProfile?.role || "member")}</strong>.</p><p>New sign-ups wait for an admin to grant viewer, editor or admin access.</p></section>
     <section class="panel"><h3>Keep it private</h3><p>Only share access with people helping coordinate the wedding. Guest contact details, rooming and payments should not be copied into public pages or messages.</p></section></div>`;
 }
@@ -465,12 +469,12 @@ async function saveRecord(form) {
     return;
   }
   $("record-dialog").close();
-  notify("Saved to the shared wedding workspace.");
+  notify("Your wedding plan has been saved.");
   await fetchRecords(true);
 }
 
 async function deleteRecord(type, id) {
-  if (!canEdit() || !confirm("Delete this record from the shared wedding workspace?")) return;
+  if (!canEdit() || !confirm("Delete this record from the wedding planner?")) return;
   const { error } = await supabase.from(type).delete().eq("id", id);
   if (error) return notify(`Could not delete: ${error.message}`);
   notify("Record deleted.");
@@ -504,7 +508,7 @@ async function importBackup() {
   const count = RECORD_TYPES.reduce((sum, type) => sum + incoming[type].length, 0);
   const skipped = OPTIONAL_BACKUP_TYPES.reduce((sum, type) => sum + (Array.isArray(incoming[type]) ? incoming[type].length : 0), 0);
   const note = skipped ? ` This backup also contains ${skipped} optional issue, inventory or transport records. They will remain in your original backup and will not be imported.` : "";
-  if (!confirm(`Import ${count} core wedding records into the shared database? Records with matching IDs will be updated.${note}`)) return;
+  if (!confirm(`Import ${count} wedding records into the planner? Records with matching IDs will be updated.${note}`)) return;
   for (const type of RECORD_TYPES) {
     const allowed = new Set(["id", "updated_by", ...FIELDS[type].map(([key]) => key)]);
     const rows = incoming[type].map((record, index) => {
@@ -520,7 +524,7 @@ async function importBackup() {
     }
   }
   await fetchRecords(true);
-  notify(`${count} records imported into the shared database.`);
+  notify(`${count} records imported into the wedding planner.`);
 }
 
 async function changeUserRole(userId, role) {
@@ -648,3 +652,8 @@ async function start() {
 
 bindEvents();
 void start();
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}

@@ -34,7 +34,7 @@ Keep the day-to-day product focused on these six sections, each backed by its ow
 
 Keep account approval and backup/import in Settings. Put Admin access where admins can find it without taking over the main navigation. On desktop use a compact, labeled left rail. On mobile use a bottom bar for Overview, Tasks, Events, Guests and More; put Team, Money, Settings and Admin inside More.
 
-Do not add a module just because it sounds useful. Issues can be a `Blocked` task. Inventory and transport are optional; leave them out of the main workflow. Preserve the existing Sheet, legacy page and exported backups until the family confirms migration. Never delete a database table or row just to make the product look simpler.
+Do not add a module just because it sounds useful. Issues can be a `Blocked` task. Inventory and transport are optional; leave them out of the main workflow. Preserve exported backups until the family confirms that all needed records have been imported. Never delete a database table or row just to make the product look simpler.
 
 ### Visual direction
 
@@ -82,7 +82,7 @@ Use separate, understandable tables for the six active areas: `departments`, `ta
 
 The connected Supabase project also has legacy optional tables (`issues`, `inventory`, `transport`) and an older `wedding_records` table. Do not assume they are empty. Use the safe cleanup script only after making a private backup; drop optional tables only when their row count is zero. Never drop a populated catch-all or legacy table until its records have been exported and accounted for.
 
-The app currently imports the six core sections and warns if the old backup contains optional records. Preserve the original Sheet and JSON backup until the family confirms that the new workspace has all needed information.
+The app imports the six core sections and warns if a backup contains optional records. Preserve private exports until the family confirms that the planner has all needed information.
 
 ### Build and review process
 
@@ -91,7 +91,7 @@ The app currently imports the six core sections and warns if the old backup cont
 3. Implement the responsive interface using the existing static app structure. The deployable site belongs in `public/`; keep SQL, setup notes and migration tooling outside the deployed output.
 4. Keep GitHub Pages working. The repo has a Vercel static config that publishes `public/`; do not switch hosting until the Vercel deployment and Supabase redirects have been checked.
 5. Preview desktop and phone widths. Check sign-up, pending access, admin approval, viewer read-only access, CRUD in all six sections, search, import/export, and that changes appear for a second signed-in user.
-6. Verify that guests and payments remain behind approved sign-in, no private values are added to Git, no fake totals/dates appear, and the old Sheet/backup remains intact.
+6. Verify that guests and payments remain behind approved sign-in, no private values are added to Git, no fake totals/dates appear, and original backups remain intact.
 7. Report what changed, what was actually checked, what remains blocked by owner access, and the exact next action. Do not say a database, migration or deployment is complete unless it was actually run and verified.
 
 ### Design references to study, not copy

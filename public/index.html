@@ -3,34 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4efe6">
-  <meta name="description" content="A thoughtful shared workspace for Ankit and Kajal's wedding team.">
-  <title>Ankit & Kajal — Wedding Desk</title>
+  <meta name="theme-color" content="#783945">
+  <meta name="description" content="A private wedding planner for Ankit and Kajal's family team.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Ankit & Kajal">
+  <title>Ankit & Kajal — Wedding Planner</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=meeting-layout-1">
+  <link rel="stylesheet" href="./styles.css?v=pwa-mark-1">
 </head>
 <body>
   <div id="notice" class="notice" role="status" aria-live="polite"></div>
 
   <main id="auth-screen" class="auth-screen">
     <section class="auth-story" aria-label="Ankit and Kajal wedding">
-      <a class="wordmark" href="./" aria-label="Ankit and Kajal home"><span class="wordmark-mark">A <i>&</i> K</span><span class="wordmark-caption">THE WEDDING DESK</span></a>
+      <a class="wordmark" href="./" aria-label="Ankit and Kajal wedding planner"><img class="wordmark-emblem" src="./assets/brand-mark.svg" alt=""><span class="wordmark-caption">ANKIT & KAJAL<br>WEDDING PLANNER</span></a>
       <div class="story-copy">
         <p class="eyebrow">A family celebration · Gujarat, India</p>
         <h1>The people.<br>The plans.<br><em>The day.</em></h1>
         <p class="story-intro">One calm place for the people, plans and details behind Ankit and Kajal’s wedding.</p>
       </div>
       <figure class="story-art"><img src="./assets/shaadi.svg" alt="Illustration of a couple in traditional wedding attire"><figcaption>ANKIT & KAJAL <span>·</span> WITH LOVE, ALWAYS</figcaption></figure>
-      <p class="auth-footnote">A private workspace for the wedding team.</p>
+      <p class="auth-footnote">Private plans for your wedding team.</p>
     </section>
 
     <section class="auth-card" aria-labelledby="auth-heading">
       <div class="auth-card-inner">
-      <div class="auth-mobile-mark"><span class="wordmark-mark">A <i>&</i> K</span><span class="wordmark-caption">THE WEDDING DESK</span></div>
+      <div class="auth-mobile-mark"><img class="wordmark-emblem" src="./assets/brand-mark.svg" alt=""><span class="wordmark-caption">ANKIT & KAJAL<br>WEDDING PLANNER</span></div>
         <p class="eyebrow" id="auth-kicker">WELCOME BACK</p>
-        <h2 id="auth-heading">Sign in to your<br>shared workspace.</h2>
+        <h2 id="auth-heading">Your plans, all<br>in one place.</h2>
         <p class="auth-subtitle" id="auth-subtitle">Use your email and password to continue.</p>
 
         <form id="signin-form" class="auth-form">
@@ -49,26 +55,26 @@
 
         <p class="auth-switch" id="auth-switch">Need an account? <button type="button" data-auth-mode="signup">Request access</button></p>
         <p class="setup-message" id="setup-message" hidden></p>
-        <p class="auth-privacy">Your account is separate from your Google account. Wedding information is visible only to approved members.</p>
+        <p class="auth-privacy">Only approved wedding members can see guest, vendor and budget details.</p>
       </div>
     </section>
   </main>
 
   <section id="pending-screen" class="pending-screen" hidden>
-    <a class="wordmark wordmark-dark" href="./"><span class="wordmark-mark">A <i>&</i> K</span><span class="wordmark-caption">THE WEDDING LEDGER</span></a>
+    <a class="wordmark wordmark-dark" href="./"><img class="wordmark-emblem" src="./assets/brand-mark.svg" alt=""><span class="wordmark-caption">ANKIT & KAJAL<br>WEDDING PLANNER</span></a>
     <div class="pending-paper"><p class="eyebrow">THANK YOU FOR SIGNING UP</p><h1>Your request is<br><em>with the family.</em></h1><p>A wedding admin needs to approve your account before any wedding information is shown. You can check back here after they’ve given you access.</p><button class="button button-secondary" id="pending-signout">Sign out</button></div>
   </section>
 
   <div id="workspace" class="workspace" hidden>
     <aside class="sidebar">
-      <a class="brand-lockup" href="#dashboard" aria-label="Ankit and Kajal dashboard"><span class="brand-monogram">A<span>&</span>K</span><span><b>ANKIT & KAJAL</b><small>THE WEDDING DESK</small></span></a>
-      <p class="nav-label">THE WORKSPACE</p>
+      <a class="brand-lockup" href="#dashboard" aria-label="Ankit and Kajal wedding planner"><img class="brand-emblem" src="./assets/brand-mark.svg" alt=""><span class="brand-wordmark"><b>Ankit <i>&</i> Kajal</b><small>WEDDING PLANNER</small></span></a>
+      <p class="nav-label">YOUR PLANS</p>
       <nav id="main-nav" class="main-nav" aria-label="Main navigation"></nav>
       <div class="sidebar-bottom"><div class="member-chip"><span class="avatar" id="user-avatar">A</span><span class="member-copy"><b id="user-name">Wedding member</b><small id="user-role">Member</small></span></div><button class="signout-link" id="signout-button" type="button">Sign out</button></div>
     </aside>
 
     <div class="main-column">
-      <header class="topbar"><div><p class="eyebrow">ANKIT & KAJAL · WEDDING TEAM</p><h1 id="page-title">Overview</h1></div><div class="topbar-actions"><span class="sync-status" id="sync-status"><i></i> Shared workspace</span><button class="button button-primary button-small" id="quick-add">+ Add task</button></div></header>
+      <header class="topbar"><div><p class="eyebrow">ANKIT & KAJAL · WEDDING TEAM</p><h1 id="page-title">Overview</h1></div><div class="topbar-actions"><span class="sync-status" id="sync-status"><i></i> Your wedding plan is up to date</span><button class="button button-primary button-small" id="quick-add">+ Add task</button></div></header>
       <main id="page-content" class="page-content" tabindex="-1"></main>
       <footer class="page-footer"><span>Made for the people who make the day.</span><span id="footer-member"></span></footer>
     </div>
@@ -83,6 +89,6 @@
   </dialog>
 
   <script src="./supabase-config.js"></script>
-  <script type="module" src="./app.js?v=meeting-layout-1"></script>
+  <script type="module" src="./app.js?v=pwa-mark-1"></script>
 </body>
 </html>

@@ -539,3 +539,19 @@ body { font-size: 16px; line-height: 1.55; }
   .event-row small { font-size: 13px; }
   .cover-edition { letter-spacing: .08em; }
 }
+.brand-emblem, .wordmark-emblem { display: block; width: 49px; height: 49px; flex: 0 0 auto; }
+.brand-wordmark { display: block; min-width: 0; }
+.brand-wordmark b { margin: 0; color: #483733; font: 500 22px/1.1 var(--serif); letter-spacing: 0; white-space: nowrap; }
+.brand-wordmark b i { color: var(--saffron); font-size: .8em; font-weight: 400; }
+.brand-wordmark small { margin-top: 5px; color: #74695e; font-size: 11px; letter-spacing: .14em; }
+.wordmark { align-items: center; flex-direction: row; gap: 12px; }
+.wordmark-emblem { width: 57px; height: 57px; }
+.wordmark-caption { color: inherit; font: 700 12px/1.5 var(--sans); letter-spacing: .12em; }
+.auth-mobile-mark { align-items: center; flex-direction: row; gap: 12px; }
+.auth-mobile-mark .wordmark-emblem { width: 53px; height: 53px; }
+.cover-art-seal { display: none !important; }
+@media (max-width: 720px) {
+  .brand-emblem { width: 43px; height: 43px; }
+  .brand-wordmark b { font-size: 21px; }
+  .wordmark-emblem { width: 52px; height: 52px; }
+}
