@@ -335,6 +335,17 @@ body { font-size: 16px; line-height: 1.55; }
 .event-run-notes div { color: #403e37; font-size: 16px; line-height: 1.7; white-space: pre-wrap; }
 .event-notes-empty { margin: 12px 0 0; color: var(--muted); font-size: 15px; }
 .run-event-actions { display: flex; gap: 8px; margin-top: 10px; }
+.order-migration-note { max-width: 920px; margin: 0 0 14px; border-left: 3px solid var(--saffron); padding: 11px 14px; color: #574b3e; background: #f3eadb; font-size: 14px; }
+.order-migration-note code { color: var(--wine); font-size: 14px; }
+.run-event.reorderable { cursor: grab; }
+.run-event.reorderable .run-event-body { cursor: grab; }
+.run-event.dragging { opacity: .48; }
+.run-event.dragging .run-event-body { border-color: var(--wine); }
+.event-reorder-controls { display: flex; align-self: center; gap: 3px; }
+.event-reorder-controls .table-action { width: 37px; min-height: 37px; border: 1px solid #e7ddd1; border-radius: 50%; padding: 0; color: var(--wine); background: #fbf7f1; font-size: 19px; }
+.event-reorder-controls .table-action:hover:not(:disabled) { background: #f2e8dc; }
+.event-reorder-controls .table-action:disabled { color: #b9b0a5; cursor: default; }
+.run-event-actions { flex-wrap: wrap; }
 .page-content { padding-top: 34px; }
 .sidebar { background: #eee8dc; }
 .nav-link:hover, .nav-link.active { background: #fffdf8; }

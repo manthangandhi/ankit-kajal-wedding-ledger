@@ -106,6 +106,7 @@ let realtimeChannel;
 let mobileMoreOpen = false;
 let moneyView = "vendors";
 let taskFilters = { status: "", department: "", owner: "", timing: "" };
+let draggedEventId = null;
 
 function notify(message) {
   const notice = $("notice");
@@ -281,7 +282,7 @@ function renderDashboard() {
   const upcoming = [...listData.events].filter((event) => event.date && new Date(event.date) >= today).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
   const noData = RECORD_TYPES.every((type) => listData[type].length === 0);
   return `
-    <section class="overview-cover"><div class="cover-copy"><p class="eyebrow-small">ANKIT & KAJAL · WEDDING PLANNER</p><h2>A day made of<br><em>many moments.</em></h2><p>One thoughtful place for the plans, people and little details that bring everyone together.</p><div class="cover-actions"><button class="button button-primary" type="button" data-view="events">View the run sheet <span aria-hidden="true">→</span></button><button class="cover-text-link" type="button" data-view="tasks">See this week’s tasks</button></div></div><div class="cover-art" aria-label="Illustrations for Haldi, Sangeet and the wedding"><img class="cover-art-haldi" src="./assets/haldi.svg" alt="Haldi celebration illustration"><img class="cover-art-sangeet" src="./assets/sangeet.svg" alt="Sangeet celebration illustration"><img class="cover-art-shaadi" src="./assets/shaadi.svg" alt="Wedding ceremony illustration"></div><span class="cover-edition">A FAMILY CELEBRATION · GUJARAT, INDIA</span></section>
+    <section class="overview-cover"><div class="cover-copy"><p class="eyebrow-small">ANKIT & KAJAL · WEDDING PLANNER</p><h2>A day made of<br><em>many moments.</em></h2><p>One thoughtful place for the plans, people and little details that bring everyone together.</p><div class="cover-actions"><button class="button button-primary" type="button" data-view="events">View the run sheet <span aria-hidden="true">→</span></button><button class="cover-text-link" type="button" data-view="tasks">See this week’s tasks</button></div></div><div class="cover-art" aria-label="Illustrations for Haldi, Sangeet and the wedding"><img class="cover-art-haldi" src="./assets/haldi.webp" alt="Haldi celebration illustration"><img class="cover-art-sangeet" src="./assets/sangeet.webp" alt="Sangeet celebration illustration"><img class="cover-art-shaadi" src="./assets/wedding.webp" alt="Wedding ceremony illustration"></div><span class="cover-edition">A FAMILY CELEBRATION · GUJARAT, INDIA</span></section>
     ${noData ? `<div class="first-run"><div class="first-run-heading"><span class="first-run-number">01</span><div><p class="eyebrow-small">A GOOD PLACE TO BEGIN</p><h3>Let’s bring the plan together.</h3><p>Add the confirmed celebrations, invite your family team, then share the next tasks.</p></div></div><div class="first-run-actions"><button class="button button-primary" data-view="events" type="button">Add event dates <span aria-hidden="true">→</span></button><button class="button button-secondary" data-view="departments" type="button">Meet the team</button><button class="button button-secondary" data-view="tasks" type="button">Create first task</button></div></div>` : ""}
     <div class="overview-section-intro"><div><p class="eyebrow-small">YOUR WEEKLY BRIEF</p><h3>What needs a little attention?</h3></div><button class="text-link" data-view="tasks" type="button">Open all tasks&nbsp; →</button></div>
     <div class="attention-grid"><section class="attention-main">
@@ -313,14 +314,18 @@ function renderMoney() {
 }
 
 function renderEventList() {
-  const events = listData.events.filter((event) => !searchTerm || Object.values(event).some((value) => String(value ?? "").toLowerCase().includes(searchTerm.toLowerCase())))
-    .sort((a, b) => (a.date ? new Date(a.date).getTime() : Infinity) - (b.date ? new Date(b.date).getTime() : Infinity));
-  return `<header class="page-heading"><div><p class="eyebrow-small">WEDDING DAY · RUN OF SHOW</p><h2>Events & run sheet</h2><p>Keep each celebration’s timing, place, lead and contact together. Add the cue order in “Run of show / notes”.</p></div>${canEdit() ? `<button class="button button-primary" data-add="events" type="button">+ Add event</button>` : ""}</header>
+  const ordered = orderedEvents();
+  const orderEnabled = hasEventOrderColumn();
+  const events = ordered.filter((event) => !searchTerm || Object.values(event).some((value) => String(value ?? "").toLowerCase().includes(searchTerm.toLowerCase())));
+  const orderNotice = canEdit() && !orderEnabled ? `<div class="order-migration-note">To rearrange and save event order, run <code>supabase/event_order_migration.sql</code> once in Supabase.</div>` : "";
+  return `<header class="page-heading"><div><p class="eyebrow-small">WEDDING DAY · RUN OF SHOW</p><h2>Events & run sheet</h2><p>Keep each celebration’s timing, place, lead and contact together. ${orderEnabled && canEdit() ? "Drag an event or use the arrows to set the order." : "Add the cue order in “Run of show / notes”."}</p></div>${canEdit() ? `<button class="button button-primary" data-add="events" type="button">+ Add event</button>` : ""}</header>
+    ${orderNotice}
     <div class="records-toolbar"><input class="search-input" id="record-search" type="search" placeholder="Find an event…" value="${escapeHTML(searchTerm)}" aria-label="Search events"><span class="record-count">${events.length} ${events.length === 1 ? "event" : "events"}</span></div>
     <div class="run-sheet">${events.length ? events.map((event, index) => {
       const callNumber = String(event.phone || "").replace(/[^+\d]/g, "");
       const art = eventIllustration(event);
-      return `<article class="run-event"><div class="run-event-marker"><span>${String(index + 1).padStart(2, "0")}</span></div><div class="run-event-body"><div class="run-event-heading"><div><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div><span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span>${art ? `<img class="run-event-art" src="${art}" alt="" loading="lazy">` : ""}</div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div></article>`;
+      const position = ordered.findIndex((item) => item.id === event.id);
+      return `<article class="run-event ${orderEnabled && canEdit() ? "reorderable" : ""}" data-event-id="${escapeHTML(event.id)}" ${orderEnabled && canEdit() ? "draggable=\"true\"" : ""}><div class="run-event-marker"><span>${String(position + 1).padStart(2, "0")}</span></div><div class="run-event-body"><div class="run-event-heading"><div><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div>${canEdit() && orderEnabled ? `<div class="event-reorder-controls"><button class="table-action" data-event-move="${escapeHTML(event.id)}" data-direction="-1" type="button" aria-label="Move ${escapeHTML(event.name)} earlier" ${position === 0 ? "disabled" : ""}>↑</button><button class="table-action" data-event-move="${escapeHTML(event.id)}" data-direction="1" type="button" aria-label="Move ${escapeHTML(event.name)} later" ${position === ordered.length - 1 ? "disabled" : ""}>↓</button></div>` : ""}<span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span>${art ? `<img class="run-event-art" src="${art}" alt="" loading="lazy">` : ""}</div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div></article>`;
     }).join("") : `<p class="empty-copy">${searchTerm ? "No matching events." : "No events added yet. Add the real dates and venues when they are confirmed."}</p>`}</div>`;
 }
 
@@ -335,10 +340,27 @@ function eventCard(event) {
 function eventIllustration(event) {
   const name = String(event?.name || "").toLowerCase();
   if (name.includes("baraat")) return "./assets/baraat.webp";
-  if (name.includes("haldi")) return "./assets/haldi.svg";
-  if (name.includes("sangeet") || name.includes("music")) return "./assets/sangeet.svg";
-  if (name.includes("shaadi") || name.includes("wedding") || name.includes("ceremony")) return "./assets/shaadi.svg";
+  if (name.includes("mehendi") || name.includes("mehndi")) return "./assets/mehendi.webp";
+  if (name.includes("haldi")) return "./assets/haldi.webp";
+  if (name.includes("sangeet")) return "./assets/sangeet.webp";
+  if (name.includes("reception")) return "./assets/reception.webp";
+  if (name.includes("vidaai") || name.includes("vidai")) return "./assets/vidaai.webp";
+  if (name.includes("shaadi") || name.includes("wedding") || name.includes("ceremony")) return "./assets/wedding.webp";
   return "";
+}
+
+function hasEventOrderColumn() {
+  return listData.events.length > 0 && Object.hasOwn(listData.events[0], "sort_order");
+}
+
+function orderedEvents() {
+  return [...listData.events].sort((a, b) => {
+    const orderA = Number(a.sort_order), orderB = Number(b.sort_order);
+    if (Number.isFinite(orderA) && Number.isFinite(orderB) && orderA !== orderB) return orderA - orderB;
+    const dateA = a.date ? new Date(a.date).getTime() : Infinity;
+    const dateB = b.date ? new Date(b.date).getTime() : Infinity;
+    return dateA - dateB || String(a.id).localeCompare(String(b.id));
+  });
 }
 
 function titleFor(type) {
@@ -459,6 +481,10 @@ async function saveRecord(form) {
     const value = values.get(key);
     record[key] = kind === "number" ? (value === "" ? null : Number(value)) : String(value ?? "").trim();
   }
+  if (activeRecordType === "events" && hasEventOrderColumn()) {
+    const current = listData.events.find((event) => event.id === editingRecordId);
+    record.sort_order = current?.sort_order ?? Math.max(-1, ...listData.events.map((event) => Number(event.sort_order) || 0)) + 1;
+  }
   record.id = editingRecordId || crypto.randomUUID();
   const button = form.querySelector('[type="submit"]');
   button.disabled = true;
@@ -479,6 +505,42 @@ async function deleteRecord(type, id) {
   if (error) return notify(`Could not delete: ${error.message}`);
   notify("Record deleted.");
   await fetchRecords(true);
+}
+
+async function persistEventOrder(events) {
+  if (!canEdit() || !hasEventOrderColumn()) return;
+  const updated = events.map((event, index) => ({ ...event, sort_order: index }));
+  listData.events = updated;
+  renderPage();
+  const results = await Promise.all(updated.map((event) => supabase.from("events").update({ sort_order: event.sort_order, updated_by: currentUser.id }).eq("id", event.id)));
+  const failed = results.find((result) => result.error);
+  if (failed) {
+    await fetchRecords(true);
+    notify(failed.error.message.includes("sort_order") ? "Run the event order setup in Supabase, then try again." : `Could not save event order: ${failed.error.message}`);
+    return;
+  }
+  await fetchRecords(true);
+  notify("Event order saved.");
+}
+
+function moveEventBy(id, direction) {
+  const events = orderedEvents();
+  const from = events.findIndex((event) => event.id === id);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= events.length) return;
+  [events[from], events[to]] = [events[to], events[from]];
+  return persistEventOrder(events);
+}
+
+function moveEventBefore(id, targetId) {
+  if (!id || !targetId || id === targetId) return;
+  const events = orderedEvents();
+  const from = events.findIndex((event) => event.id === id);
+  const target = events.findIndex((event) => event.id === targetId);
+  if (from < 0 || target < 0) return;
+  const [moved] = events.splice(from, 1);
+  events.splice(from < target ? target - 1 : target, 0, moved);
+  return persistEventOrder(events);
 }
 
 function exportBackup() {
@@ -511,8 +573,10 @@ async function importBackup() {
   if (!confirm(`Import ${count} wedding records into the planner? Records with matching IDs will be updated.${note}`)) return;
   for (const type of RECORD_TYPES) {
     const allowed = new Set(["id", "updated_by", ...FIELDS[type].map(([key]) => key)]);
+    if (type === "events") allowed.add("sort_order");
     const rows = incoming[type].map((record, index) => {
       const row = { id: String(record.id || `${type}-${Date.now()}-${index}`), updated_by: currentUser.id };
+      if (type === "events" && hasEventOrderColumn()) row.sort_order = Number(record.sort_order ?? index);
       for (const [key, , kind] of FIELDS[type]) {
         if (record[key] !== undefined) row[key] = kind === "number" ? (record[key] === "" || record[key] === null ? null : Number(record[key])) : String(record[key] ?? "");
       }
@@ -548,6 +612,8 @@ function bindEvents() {
     if (more) return setView("more");
     const moneyTab = event.target.closest("[data-money-view]");
     if (moneyTab) { moneyView = moneyTab.dataset.moneyView; searchTerm = ""; renderPage(); return; }
+    const eventMove = event.target.closest("[data-event-move]");
+    if (eventMove) return void moveEventBy(eventMove.dataset.eventMove, Number(eventMove.dataset.direction));
     const add = event.target.closest("[data-add]");
     if (add) return openRecordDialog(add.dataset.add);
     const edit = event.target.closest("[data-edit]");
@@ -577,6 +643,32 @@ function bindEvents() {
     if (role) void changeUserRole(role.dataset.roleUser, role.value);
     const filter = event.target.closest("[data-task-filter]");
     if (filter) { taskFilters[filter.dataset.taskFilter] = filter.value; renderPage(); }
+  });
+  $("page-content").addEventListener("dragstart", (event) => {
+    const card = event.target.closest(".run-event[data-event-id]");
+    if (!card || !canEdit() || !hasEventOrderColumn()) return;
+    draggedEventId = card.dataset.eventId;
+    card.classList.add("dragging");
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", draggedEventId);
+  });
+  $("page-content").addEventListener("dragover", (event) => {
+    const card = event.target.closest(".run-event[data-event-id]");
+    if (card && draggedEventId && card.dataset.eventId !== draggedEventId) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    }
+  });
+  $("page-content").addEventListener("drop", (event) => {
+    const card = event.target.closest(".run-event[data-event-id]");
+    if (!card || !draggedEventId) return;
+    event.preventDefault();
+    void moveEventBefore(draggedEventId, card.dataset.eventId);
+    draggedEventId = null;
+  });
+  $("page-content").addEventListener("dragend", (event) => {
+    event.target.closest(".run-event")?.classList.remove("dragging");
+    draggedEventId = null;
   });
   $("signin-form").addEventListener("submit", async (event) => {
     event.preventDefault();

@@ -1,20 +1,23 @@
-const CACHE_NAME = "ankit-kajal-planner-v1";
+const CACHE_NAME = "ankit-kajal-planner-v2";
 const STATIC_FILES = [
   "./",
   "./index.html",
   "./supabase-config.js",
-  "./styles.css?v=pwa-mark-1",
-  "./app.js?v=pwa-mark-1",
+  "./styles.css?v=events-v2",
+  "./app.js?v=events-v2",
   "./manifest.webmanifest",
   "./favicon.svg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",
   "./assets/brand-mark.svg",
-  "./assets/haldi.svg",
-  "./assets/sangeet.svg",
-  "./assets/shaadi.svg",
-  "./assets/baraat.webp"
+  "./assets/haldi.webp",
+  "./assets/mehendi.webp",
+  "./assets/sangeet.webp",
+  "./assets/baraat.webp",
+  "./assets/wedding.webp",
+  "./assets/reception.webp",
+  "./assets/vidaai.webp"
 ];
 
 self.addEventListener("install", (event) => {

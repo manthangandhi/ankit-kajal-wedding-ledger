@@ -18,6 +18,8 @@ The static site uses Supabase for sign in, account roles and the six wedding rec
 
 New signups remain pending until an admin assigns viewer, editor or admin access. Email auto-confirm is enabled in the current Supabase project.
 
+For an existing Supabase project, run [`supabase/event_order_migration.sql`](./supabase/event_order_migration.sql) once to enable saved event rearranging. New projects get this column from `schema.sql`.
+
 The project URL and publishable key are in [`public/supabase-config.js`](./public/supabase-config.js). They are browser-visible values; never add a service-role key or database password.
 
 ## Vercel project settings

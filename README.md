@@ -4,7 +4,7 @@ A private, mobile friendly planner for the family coordinating Ankit and Kajal's
 
 ## Sections
 
-Overview, tasks, events and run sheet, guests, team, vendors and payments. The interface is for approved wedding members; signups wait for an admin to grant access.
+Overview, tasks, individually illustrated events with a reorderable run sheet, guests, team, vendors and payments. The interface is for approved wedding members; signups wait for an admin to grant access.
 
 ## Supabase
 

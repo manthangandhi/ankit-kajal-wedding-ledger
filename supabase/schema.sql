@@ -30,10 +30,12 @@ create table if not exists public.events (
   id text primary key, name text not null, date text not null default '',
   venue text not null default '', captain text not null default '',
   phone text not null default '', status text not null default 'Planning',
+  sort_order integer not null default 0,
   notes text not null default '', created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id) on delete set null
 );
+alter table public.events add column if not exists sort_order integer not null default 0;
 create table if not exists public.guests (
   id text primary key, name text not null, phone text not null default '',
   side text not null default 'Other', rsvp text not null default 'Pending',
@@ -140,7 +142,7 @@ insert into public.departments (id, name) values
   ('dept-21', 'Parking & Traffic'), ('dept-22', 'Family Coordination'),
   ('dept-23', 'Communication & Announcements'), ('dept-24', 'Troubleshooting & Contingency')
 on conflict (id) do nothing;
-insert into public.events (id, name) values
-  ('evt-01', 'Mehendi'), ('evt-02', 'Haldi'), ('evt-03', 'Sangeet'),
-  ('evt-04', 'Baraat'), ('evt-05', 'Shaadi'), ('evt-06', 'Reception'), ('evt-07', 'Vidaai')
+insert into public.events (id, name, sort_order) values
+  ('evt-01', 'Mehendi', 0), ('evt-02', 'Haldi', 1), ('evt-03', 'Sangeet', 2),
+  ('evt-04', 'Baraat', 3), ('evt-05', 'Shaadi', 4), ('evt-06', 'Reception', 5), ('evt-07', 'Vidaai', 6)
 on conflict (id) do nothing;
