@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f0e6">
+  <meta name="description" content="A thoughtful shared workspace for Ankit and Kajal's wedding team.">
+  <title>Ankit & Kajal — Wedding Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="notice" class="notice" role="status" aria-live="polite"></div>
+
+  <main id="auth-screen" class="auth-screen">
+    <section class="auth-story" aria-label="Ankit and Kajal wedding">
+      <a class="wordmark" href="./" aria-label="Ankit and Kajal home"><span class="wordmark-mark">A <i>&</i> K</span><span class="wordmark-caption">THE WEDDING LEDGER</span></a>
+      <div class="story-copy">
+        <p class="eyebrow">A family celebration · Gujarat, India</p>
+        <h1>All the little things<br>that make <em>the day.</em></h1>
+        <p class="story-intro">One calm place for the people, plans and details behind Ankit and Kajal’s wedding.</p>
+      </div>
+      <figure class="story-art"><img src="./assets/shaadi.svg" alt="Illustration of a couple in traditional wedding attire"><figcaption>ANKIT & KAJAL <span>·</span> WITH LOVE, ALWAYS</figcaption></figure>
+      <p class="auth-footnote">A private workspace for the wedding team.</p>
+    </section>
+
+    <section class="auth-card" aria-labelledby="auth-heading">
+      <div class="auth-card-inner">
+        <div class="auth-mobile-mark"><span class="wordmark-mark">A <i>&</i> K</span><span class="wordmark-caption">THE WEDDING LEDGER</span></div>
+        <p class="eyebrow" id="auth-kicker">WELCOME BACK</p>
+        <h2 id="auth-heading">Sign in to your<br>shared workspace.</h2>
+        <p class="auth-subtitle" id="auth-subtitle">Use your email and password to continue.</p>
+
+        <form id="signin-form" class="auth-form">
+          <label>Email address<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least 8 characters"></label>
+          <button class="button button-primary button-wide" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        </form>
+
+        <form id="signup-form" class="auth-form" hidden>
+          <label>Your name<input name="displayName" type="text" autocomplete="name" required maxlength="80" placeholder="How should we address you?"></label>
+          <label>Email address<input name="email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+          <label>Create a password<input name="password" type="password" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters"></label>
+          <button class="button button-primary button-wide" type="submit">Request an account <span aria-hidden="true">→</span></button>
+          <p class="form-note">New accounts wait for a wedding admin to approve access.</p>
+        </form>
+
+        <p class="auth-switch" id="auth-switch">Need an account? <button type="button" data-auth-mode="signup">Request access</button></p>
+        <p class="setup-message" id="setup-message" hidden></p>
+        <p class="auth-privacy">Your account is separate from your Google account. Wedding information is visible only to approved members.</p>
+      </div>
+    </section>
+  </main>
+
+  <section id="pending-screen" class="pending-screen" hidden>
+    <a class="wordmark wordmark-dark" href="./"><span class="wordmark-mark">A <i>&</i> K</span><span class="wordmark-caption">THE WEDDING LEDGER</span></a>
+    <div class="pending-paper"><p class="eyebrow">THANK YOU FOR SIGNING UP</p><h1>Your request is<br><em>with the family.</em></h1><p>A wedding admin needs to approve your account before any wedding information is shown. You can check back here after they’ve given you access.</p><button class="button button-secondary" id="pending-signout">Sign out</button></div>
+  </section>
+
+  <div id="workspace" class="workspace" hidden>
+    <aside class="sidebar">
+      <a class="brand-lockup" href="#dashboard" aria-label="Ankit and Kajal dashboard"><span class="brand-monogram">A<span>&</span>K</span><span><b>ANkit & KAJAL</b><small>THE WEDDING LEDGER</small></span></a>
+      <p class="nav-label">THE WORKSPACE</p>
+      <nav id="main-nav" class="main-nav" aria-label="Main navigation"></nav>
+      <div class="sidebar-bottom"><div class="member-chip"><span class="avatar" id="user-avatar">A</span><span class="member-copy"><b id="user-name">Wedding member</b><small id="user-role">Member</small></span></div><button class="signout-link" id="signout-button" type="button">Sign out</button></div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar"><div><p class="eyebrow">ANKIT & KAJAL · WEDDING TEAM</p><h1 id="page-title">Overview</h1></div><div class="topbar-actions"><span class="sync-status" id="sync-status"><i></i> Shared workspace</span><button class="button button-primary button-small" id="quick-add">+ Add task</button></div></header>
+      <main id="page-content" class="page-content" tabindex="-1"></main>
+      <footer class="page-footer"><span>Made for the people who make the day.</span><span id="footer-member"></span></footer>
+    </div>
+  </div>
+
+  <dialog id="record-dialog" class="record-dialog">
+    <form id="record-form" method="dialog">
+      <div class="dialog-heading"><div><p class="eyebrow" id="dialog-eyebrow">WEDDING RECORD</p><h2 id="dialog-title">Add a record</h2></div><button class="icon-button" type="button" id="dialog-close" aria-label="Close">×</button></div>
+      <div id="dialog-fields" class="dialog-fields"></div>
+      <div class="dialog-actions"><button class="button button-secondary" type="button" id="dialog-cancel">Cancel</button><button class="button button-primary" type="submit">Save changes</button></div>
+    </form>
+  </dialog>
+
+  <script src="./supabase-config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
