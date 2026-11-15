@@ -8,7 +8,7 @@ Tasks, events, departments, guests, vendors and payments. Account access and bac
 
 ## Setup
 
-Use [SETUP.md](./SETUP.md). Run [`supabase/schema.sql`](./supabase/schema.sql) in Supabase, then sign up and promote the first admin. The browser project URL and publishable key are in [`public/supabase-config.js`](./public/supabase-config.js); never add the service-role key.
+Use [SETUP.md](./SETUP.md). Run [`supabase/schema.sql`](./supabase/schema.sql) in Supabase, then sign up and promote the first admin. Optional cleanup drops only empty tables. The browser project URL and publishable key are in [`public/supabase-config.js`](./public/supabase-config.js); never add the service-role key.
 
 New accounts start pending. Viewers can read; editors can manage wedding records; admins can also approve accounts. Database row-level security enforces those roles.
 

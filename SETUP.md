@@ -10,7 +10,7 @@ The app uses six separate record tables: `tasks`, `events`, `departments`, `gues
 2. Run [`supabase/schema.sql`](./supabase/schema.sql).
 3. If the SQL editor reports an error, stop and share the error before rerunning or changing policies.
 
-The old generic `wedding_records` table is not used or dropped by this SQL. Keep it until you verify the migration and confirm it contains no needed data.
+The app uses only those six record tables. The connected project also has optional `issues`, `inventory` and `transport` tables plus an older `wedding_records` table. I can’t read their row counts with the public website key, so I did not remove them blindly. After taking a private backup, run [`supabase/cleanup_unused_tables.sql`](./supabase/cleanup_unused_tables.sql). It drops only tables that are empty and reports any tables it keeps because they contain data.
 
 ## Account access
 
