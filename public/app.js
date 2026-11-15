@@ -8,22 +8,11 @@ const NAV_ITEMS = [
   ["tasks", "Tasks", "✓"],
   ["events", "Events", "✦"],
   ["guests", "Guests", "♙"],
-  ["departments", "Team", "♧"],
+  ["departments", "Departments", "♧"],
   ["money", "Money", "₹"],
   ["settings", "Settings", "⚙"],
   ["users", "Admin · access", "◎"],
   ["more", "More", "···"]
-];
-
-const DEPARTMENTS = [
-  "Invitations & RSVP", "Guest Reception", "Accommodation", "Transportation",
-  "VIP & Elderly Care", "Haldi & Mehendi", "Sangeet & Entertainment",
-  "Wedding Rituals", "Baraat & Procession", "Bride & Groom Readiness",
-  "Venue Management", "Decoration & Florals", "Catering & Food",
-  "Photography & Video", "Sound, Light & Technical", "Vendor Coordination",
-  "Inventory & Gifts", "Finance & Payments", "Security & Valuables",
-  "Medical & Emergency", "Parking & Traffic", "Family Coordination",
-  "Communication & Announcements", "Troubleshooting & Contingency"
 ];
 
 const FIELDS = {
@@ -36,7 +25,7 @@ const FIELDS = {
   ],
   tasks: [
     ["title", "Task", "text"],
-    ["department", "Department", "select", DEPARTMENTS.join("|")],
+    ["department", "Department", "text"],
     ["owner", "Owner", "text"], ["due", "Deadline", "datetime-local"],
     ["priority", "Priority", "select", "Low|Medium|High|Critical"],
     ["status", "Status", "select", "Not Started|In Progress|Blocked|Completed"],
@@ -428,7 +417,7 @@ function renderSettings() {
     <div class="warning-box">Only approved wedding team members can see the guest, vendor and budget details recorded here.</div>
     <div class="settings-grid"><section class="panel"><h3>Download a backup</h3><p>Save a private copy of the wedding records. Guest and vendor details may be included.</p><button class="button button-secondary" id="export-json" type="button">Download JSON backup</button></section>
     ${canEdit() ? `<section class="panel"><h3>Import a backup</h3><p>Import a JSON backup into the wedding planner. Records with matching IDs will be updated.</p><input class="file-input" id="import-json" type="file" accept=".json,application/json"><button class="button button-primary" id="import-button" type="button">Import backup</button></section>` : ""}
-    ${currentProfile?.role === "admin" && listData.departments.length === 0 ? `<section class="panel seed-panel"><p class="eyebrow-small">OPTIONAL STARTER DATA</p><h3>Add departments when you’re ready</h3><p>No departments have been added yet. Add the 24 standard departments if they are useful; events, tasks, guests, vendors and payments remain empty.</p><button class="button button-primary" id="load-departments" type="button">Add 24 departments</button><p class="form-note">One-time Supabase setup: <code>supabase/reset_wedding_planner.sql</code>. It clears planner data and keeps user accounts.</p></section>` : ""}
+    ${currentProfile?.role === "admin" && listData.departments.length === 0 ? `<section class="panel seed-panel"><p class="eyebrow-small">OPTIONAL STARTER DATA</p><h3>Add departments when you’re ready</h3><p>No departments have been added yet. Add the 24 standard department names if they are useful. This button does not add events, tasks, guests, vendors or payments.</p><button class="button button-primary" id="load-departments" type="button">Add 24 departments</button><p class="form-note">One-time Supabase setup: <code>supabase/reset_wedding_planner.sql</code>. It clears planner data and keeps user accounts.</p></section>` : ""}
     <section class="panel"><h3>Account access</h3><p>Signed in as <strong>${escapeHTML(currentProfile?.email || currentUser?.email || "")}</strong>. Your current role is <strong>${escapeHTML(currentProfile?.role || "member")}</strong>.</p><p>New sign-ups wait for an admin to grant viewer, editor or admin access.</p></section>
     <section class="panel"><h3>Keep it private</h3><p>Only share access with people helping coordinate the wedding. Guest contact details, rooming and payments should not be copied into public pages or messages.</p></section></div>`;
 }
@@ -456,11 +445,21 @@ function openRecordDialog(type, record = null) {
   editingRecordId = record?.id || null;
   $("dialog-eyebrow").textContent = titleFor(type).toUpperCase();
   $("dialog-title").textContent = `${record ? "Edit" : "Add"} ${singular(type)}`;
+  const departmentNames = type === "tasks"
+    ? [...new Set(listData.departments.map((department) => String(department.name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+    : [];
   $("dialog-fields").innerHTML = FIELDS[type].map(([key, label, kind, options]) => {
     const id = `field-${key}`;
     const value = record?.[key] ?? "";
+    const departmentField = type === "tasks" && key === "department";
     let control;
-    if (kind === "select") {
+    if (departmentField && departmentNames.length) {
+      const options = departmentNames.map((name) => [name, name]);
+      if (value && !departmentNames.includes(String(value))) options.unshift([String(value), `${value} (not in Departments)`]);
+      control = `<select id="${id}" name="${key}"><option value="">Choose a department</option>${options.map(([optionValue, optionLabel]) => `<option value="${escapeHTML(optionValue)}" ${String(value) === optionValue ? "selected" : ""}>${escapeHTML(optionLabel)}</option>`).join("")}</select>`;
+    } else if (departmentField) {
+      control = `<input id="${id}" name="${key}" type="text" value="${escapeHTML(value)}" placeholder="Enter a department name">`;
+    } else if (kind === "select") {
       const values = String(options || "").split("|").filter(Boolean);
       control = `<select id="${id}" name="${key}">${values.map((option) => `<option value="${escapeHTML(option)}" ${String(value) === option ? "selected" : ""}>${escapeHTML(option)}</option>`).join("")}</select>`;
     } else if (kind === "textarea") {
@@ -469,7 +468,8 @@ function openRecordDialog(type, record = null) {
       const inputValue = kind === "datetime-local" && value ? String(value).slice(0, 16) : value;
       control = `<input id="${id}" name="${key}" type="${kind}" value="${escapeHTML(inputValue)}" ${kind === "number" ? `min="0" step="${["party", "quantity"].includes(key) ? "1" : "any"}"` : ""} ${key === REQUIRED_FIELD[type] ? "required" : ""}>`;
     }
-    return `<label class="${kind === "textarea" ? "wide" : ""}" for="${id}">${escapeHTML(label)}${control}</label>`;
+    const departmentHint = departmentField && !departmentNames.length ? `<small class="field-hint">No departments are set up. Add or manage your own list in Departments.</small>` : "";
+    return `<label class="${kind === "textarea" ? "wide" : ""}" for="${id}">${escapeHTML(label)}${control}${departmentHint}</label>`;
   }).join("");
   $("record-dialog").showModal();
   $("dialog-fields").querySelector("input,select,textarea")?.focus();

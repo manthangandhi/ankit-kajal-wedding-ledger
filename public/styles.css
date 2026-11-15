@@ -583,10 +583,7 @@ body { font-size: 16px; line-height: 1.55; }
 .run-event-art { position: relative; z-index: 1; display: block; width: 100%; height: 270px; object-fit: contain; object-position: center bottom; border-radius: 0; background: transparent; }
 .run-event-actions { margin-top: 14px; }
 .run-event-actions .table-action { min-height: 42px; }
-.reset-panel { grid-column: 1 / -1; border-color: #e7c9c4; background: #fffaf8; }
-.button-danger { border-color: #a3453c; color: #fffaf2; background: #a3453c; }
-.button-danger:hover { background: #843a34; }
-.button-danger:disabled { opacity: .6; cursor: wait; }
+.field-hint { color: var(--muted); font-size: 13px; font-weight: 400; line-height: 1.5; letter-spacing: 0; }
 @media (max-width: 720px) {
   .run-event { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }
   .run-event-body.has-art { grid-template-columns: minmax(0, 1fr); }
