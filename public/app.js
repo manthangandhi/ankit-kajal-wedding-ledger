@@ -428,7 +428,7 @@ function renderSettings() {
     <div class="warning-box">Only approved wedding team members can see the guest, vendor and budget details recorded here.</div>
     <div class="settings-grid"><section class="panel"><h3>Download a backup</h3><p>Save a private copy of the wedding records. Guest and vendor details may be included.</p><button class="button button-secondary" id="export-json" type="button">Download JSON backup</button></section>
     ${canEdit() ? `<section class="panel"><h3>Import a backup</h3><p>Import a JSON backup into the wedding planner. Records with matching IDs will be updated.</p><input class="file-input" id="import-json" type="file" accept=".json,application/json"><button class="button button-primary" id="import-button" type="button">Import backup</button></section>` : ""}
-    ${currentProfile?.role === "admin" ? `<section class="panel reset-panel"><p class="eyebrow-small">START OVER</p><h3>Reset the wedding tracker</h3><p>One action clears tasks, guests, vendors and payments, then restores the 24 departments and 7 celebration events. Team accounts and access stay in place. Run <code>supabase/reset_wedding_planner.sql</code> once in Supabase before first use.</p><button class="button button-danger" id="reset-planner" type="button">Clear records & add starter set</button></section>` : ""}
+    ${currentProfile?.role === "admin" && listData.departments.length === 0 ? `<section class="panel seed-panel"><p class="eyebrow-small">OPTIONAL STARTER DATA</p><h3>Add departments when you’re ready</h3><p>No departments have been added yet. Add the 24 standard departments if they are useful; events, tasks, guests, vendors and payments remain empty.</p><button class="button button-primary" id="load-departments" type="button">Add 24 departments</button><p class="form-note">One-time Supabase setup: <code>supabase/reset_wedding_planner.sql</code>. It clears planner data and keeps user accounts.</p></section>` : ""}
     <section class="panel"><h3>Account access</h3><p>Signed in as <strong>${escapeHTML(currentProfile?.email || currentUser?.email || "")}</strong>. Your current role is <strong>${escapeHTML(currentProfile?.role || "member")}</strong>.</p><p>New sign-ups wait for an admin to grant viewer, editor or admin access.</p></section>
     <section class="panel"><h3>Keep it private</h3><p>Only share access with people helping coordinate the wedding. Guest contact details, rooming and payments should not be copied into public pages or messages.</p></section></div>`;
 }
@@ -508,19 +508,17 @@ async function saveRecord(form) {
   }
 }
 
-async function resetPlanner(button) {
-  if (currentProfile?.role !== "admin" || resettingPlanner) return;
-  const confirmed = confirm("This will permanently delete every task, event, department, guest, vendor and payment. It will then add the 24 starter departments and 7 starter events. Team accounts and access will remain. Continue?");
-  if (!confirmed) return;
+async function loadDepartments(button) {
+  if (currentProfile?.role !== "admin" || listData.departments.length || resettingPlanner) return;
   resettingPlanner = true;
   button.disabled = true;
   try {
-    const { error } = await supabase.rpc("reset_wedding_planner");
+    const { error } = await supabase.rpc("load_starter_departments");
     if (error) throw error;
     await fetchRecords(true);
-    notify("Tracker reset. Starter departments and events are ready.");
+    notify("The 24 departments have been added.");
   } catch (error) {
-    notify(`Could not reset the tracker: ${error.message}`);
+    notify(`Could not add departments: ${error.message}`);
   } finally {
     resettingPlanner = false;
     if (button.isConnected) button.disabled = false;
@@ -665,8 +663,8 @@ function bindEvents() {
   $("page-content").addEventListener("click", (event) => {
     if (event.target.closest("#export-json")) exportBackup();
     if (event.target.closest("#import-button")) void importBackup();
-    const resetButton = event.target.closest("#reset-planner");
-    if (resetButton) void resetPlanner(resetButton);
+    const departmentsButton = event.target.closest("#load-departments");
+    if (departmentsButton) void loadDepartments(departmentsButton);
   });
   $("page-content").addEventListener("change", (event) => {
     const role = event.target.closest("[data-role-user]");

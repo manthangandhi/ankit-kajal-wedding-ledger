@@ -128,21 +128,4 @@ begin
 end;
 $$;
 
-insert into public.departments (id, name) values
-  ('dept-01', 'Invitations & RSVP'), ('dept-02', 'Guest Reception'),
-  ('dept-03', 'Accommodation'), ('dept-04', 'Transportation'),
-  ('dept-05', 'VIP & Elderly Care'), ('dept-06', 'Haldi & Mehendi'),
-  ('dept-07', 'Sangeet & Entertainment'), ('dept-08', 'Wedding Rituals'),
-  ('dept-09', 'Baraat & Procession'), ('dept-10', 'Bride & Groom Readiness'),
-  ('dept-11', 'Venue Management'), ('dept-12', 'Decoration & Florals'),
-  ('dept-13', 'Catering & Food'), ('dept-14', 'Photography & Video'),
-  ('dept-15', 'Sound, Light & Technical'), ('dept-16', 'Vendor Coordination'),
-  ('dept-17', 'Inventory & Gifts'), ('dept-18', 'Finance & Payments'),
-  ('dept-19', 'Security & Valuables'), ('dept-20', 'Medical & Emergency'),
-  ('dept-21', 'Parking & Traffic'), ('dept-22', 'Family Coordination'),
-  ('dept-23', 'Communication & Announcements'), ('dept-24', 'Troubleshooting & Contingency')
-on conflict (id) do nothing;
-insert into public.events (id, name, sort_order) values
-  ('evt-01', 'Mehendi', 0), ('evt-02', 'Haldi', 1), ('evt-03', 'Sangeet', 2),
-  ('evt-04', 'Baraat', 3), ('evt-05', 'Shaadi', 4), ('evt-06', 'Reception', 5), ('evt-07', 'Vidaai', 6)
-on conflict (id) do nothing;
+-- Keep planner tables empty initially; the admin may add departments from Settings.
