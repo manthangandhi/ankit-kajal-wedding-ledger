@@ -1,34 +1,25 @@
-# Set up the shared wedding database
+# Set up and host the Wedding Desk
 
-The site stays on GitHub Pages. Supabase supplies the database and account sign-in; nobody who joins the wedding team needs their own Sheet or database project.
+The tracker is a static website. Supabase stores the records and signs users in. No wedding team member needs to create a Sheet or database account.
 
-## 1. Create the free database project
+## Supabase database
 
-1. Create a Supabase account and a new project for **Ankit & Kajal Wedding Ledger**.
-2. Choose a strong database password and keep it in your password manager. It is not used by the website.
-3. In the Supabase dashboard, open **SQL Editor → New query**.
-4. Copy all of [`supabase/schema.sql`](./supabase/schema.sql) into the editor and run it. It creates separate `departments`, `tasks`, `events`, `guests`, `vendors`, `payments`, `issues`, `inventory` and `transport` tables, plus `profiles` for accounts. It also adds role policies and starter departments/events.
+The app uses six separate record tables: `tasks`, `events`, `departments`, `guests`, `vendors` and `payments`. `profiles` stores account roles. The SQL also creates starter departments and wedding events, and enables row-level security.
 
-## 2. Connect this website
+1. Open the project’s Supabase **SQL Editor**.
+2. Run [`supabase/schema.sql`](./supabase/schema.sql).
+3. If the SQL editor reports an error, stop and share the error before rerunning or changing policies.
 
-1. In Supabase, open **Project Settings → API** (or **Data API** in the current dashboard).
-2. Copy the **Project URL** and the **publishable key**. The legacy `anon` public key also works. Never use the `service_role` key here.
-3. Put those two values into [`supabase-config.js`](./supabase-config.js):
+The old generic `wedding_records` table is not used or dropped by this SQL. Keep it until you verify the migration and confirm it contains no needed data.
 
-   ```js
-   window.WEDDING_SUPABASE = {
-     url: "https://YOUR_PROJECT.supabase.co",
-     publishableKey: "sb_publishable_..."
-   };
-   ```
+## Account access
 
-   These are designed to be visible in the browser. The SQL row-level security rules protect the data. A service-role key or database password would bypass those rules and must never be published.
+Email auto-confirm is already enabled in the connected Supabase project, so sign-up should not require inbox confirmation. New accounts still begin as `pending`; an admin must approve them before they can see wedding data.
 
-## 3. Create the first admin account
+To create the first admin:
 
-1. Publish the configured site to GitHub Pages, or preview it locally using the instructions below.
-2. Use **Request access** to sign up with the email address that should own the wedding workspace. With **Confirm email** disabled, you can sign in right away.
-3. In Supabase SQL Editor, replace the example email and run this once:
+1. Open the site and sign up with the owner’s email.
+2. In Supabase SQL Editor, replace the example address and run:
 
    ```sql
    update public.profiles as p
@@ -38,55 +29,41 @@ The site stays on GitHub Pages. Supabase supplies the database and account sign-
      and lower(u.email) = lower('owner@example.com');
    ```
 
-   Check that Supabase reports **1 row** updated. Sign in again. The first admin can approve other accounts and assign `viewer`, `editor`, or `admin` roles under **People & access**.
+3. Sign in again. Under **People & access**, the admin can grant `viewer`, `editor` or `admin` access.
 
-New sign-ups default to `pending`, which has no access to wedding records. This prevents a new account from promoting itself or reading guest information. Viewers can read; editors can manage wedding records; admins can manage both records and account access.
+Viewers can read. Editors can create, change and delete wedding records. Admins can also manage account roles. Row-level security enforces these permissions in Supabase.
 
-## 4. Turn off email confirmation
+## Website configuration
 
-In Supabase, open **Authentication → Sign In / Providers → Email** and switch off **Confirm email**. New accounts can then sign in immediately without checking their inbox. The app still marks every new account `pending`; an admin must approve it before it can read or change wedding data.
+The project URL and publishable key are stored in [`public/supabase-config.js`](./public/supabase-config.js). They are public browser values. Never put a service-role key or database password there.
 
-If your dashboard labels the menu differently, search the Authentication settings for **Confirm email**. This is a Supabase project setting; it cannot be changed from the website's public key.
+The current signup confirmation setting is already off. If that changes later, Supabase Dashboard → **Authentication → Sign In / Providers → Email** → switch off **Confirm email**. The public app key cannot change this project setting.
 
-## 5. Configure sign-in redirect URLs
+## Migrate the existing Sheet
 
-In **Authentication → URL Configuration**, set the site URL to:
+1. Open [`public/legacy.html`](./public/legacy.html) on the existing site.
+2. Download the latest Sheet data and export a JSON backup. Keep it private.
+3. Sign into the new app as an approved editor or admin and import the JSON under **Settings & backup**.
 
-```text
-https://manthangandhi.github.io/ankit-kajal-wedding-ledger/
-```
-
-Add that URL and the local preview URL to the redirect allow list:
-
-```text
-https://manthangandhi.github.io/ankit-kajal-wedding-ledger/**
-http://127.0.0.1:4173/**
-```
-
-## 6. Bring across the current Google Sheet data
-
-Do this before relying on the new database as the shared source of truth:
-
-1. Open [`legacy.html`](./legacy.html) at the same GitHub Pages path. It is the previous tracker, retained temporarily for migration.
-2. In **Settings & Sync**, connect the existing Apps Script URL and PIN. Choose **Download from Sheets** so the local browser has the latest shared data.
-3. Export the tracker’s JSON backup and store the file somewhere private.
-4. Sign in to the new site as an approved editor or admin. In **Settings & backup**, import the JSON file.
-5. Check a few departments, guests, payments and events in the new site before asking the team to use it.
-
-The import preserves existing record IDs and updates matching records. Keep the Google Sheet and a private JSON backup until the family has confirmed the migration.
+The simple tracker imports tasks, events, departments, guests, vendors and payments. If the old backup contains issue, inventory or transport records, those remain in the original JSON and Sheet; the import will tell you how many it skips. Keep the old Sheet and backup until the new data is confirmed.
 
 ## Preview locally
 
-From this project's root:
-
 ```sh
+cd public
 python3 -m http.server 4173 --bind 127.0.0.1
 ```
 
-Open `http://127.0.0.1:4173/`. The site is static; there is no build or package install. Add the local preview URL above to Supabase’s redirect list if email confirmation is enabled.
+Open `http://127.0.0.1:4173/`.
 
-## Publish on GitHub Pages
+## Vercel hosting
 
-The site has no build step. The separate repository publishes through its GitHub Actions Pages workflow at `https://manthangandhi.github.io/ankit-kajal-wedding-ledger/`. Commit `supabase-config.js` with the public project URL and publishable key after running the SQL and confirming RLS is enabled. No private server credentials belong in GitHub.
+The repo has a `vercel.json` that serves only the `public/` directory. To deploy:
 
-The free `github.io` address is enough to use the site. If hosting changes later, the same static app can move to a free Pages subdomain such as `pages.dev`; a custom domain name is usually a paid registration.
+1. In Vercel, choose **Add New → Project** and import `manthangandhi/ankit-kajal-wedding-ledger` from GitHub.
+2. Keep the project root as `./`; use the static/Other framework preset, no build command, and `public` as the output directory.
+3. Deploy. Vercel will provide a `*.vercel.app` address.
+4. Add the Vercel URL to Supabase **Authentication → URL Configuration → Redirect URLs**. Set it as the Site URL if Vercel becomes the main address.
+5. Confirm sign-up, admin approval and a record update on Vercel before switching anyone away from GitHub Pages.
+
+Vercel account access is not connected to this workspace, so the project import and deploy must be authorized in your Vercel account. Keep GitHub Pages live as a fallback until the Vercel URL is verified.

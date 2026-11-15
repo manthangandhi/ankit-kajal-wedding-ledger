@@ -1,19 +1,16 @@
 const RECORD_TYPES = [
-  "departments", "tasks", "events", "guests", "vendors", "payments",
-  "issues", "inventory", "transport"
+  "departments", "tasks", "events", "guests", "vendors", "payments"
 ];
+const OPTIONAL_BACKUP_TYPES = ["issues", "inventory", "transport"];
 
 const NAV_ITEMS = [
   ["dashboard", "Overview", "⌂"],
-  ["departments", "Departments", "♧"],
   ["tasks", "Tasks", "✓"],
   ["events", "Events", "✦"],
+  ["departments", "Departments", "♧"],
   ["guests", "Guests & rooms", "♙"],
   ["vendors", "Vendors", "▤"],
   ["payments", "Budget & payments", "₹"],
-  ["issues", "Issues", "⚑"],
-  ["inventory", "Inventory & gifts", "◇"],
-  ["transport", "Transport", "↗"],
   ["users", "People & access", "◎"],
   ["settings", "Settings & backup", "⚙"]
 ];
@@ -74,28 +71,6 @@ const FIELDS = {
     ["paid", "Paid (₹)", "number"], ["due", "Due date", "date"],
     ["status", "Status", "select", "Pending|Partial|Paid"], ["notes", "Reference / notes", "textarea"]
   ],
-  issues: [
-    ["title", "Issue", "text"],
-    ["department", "Department", "select", DEPARTMENTS.join("|")],
-    ["owner", "Assigned to", "text"],
-    ["severity", "Severity", "select", "Low|Medium|High|Critical"],
-    ["status", "Status", "select", "Open|In Progress|Blocked|Resolved"],
-    ["notes", "Description / resolution", "textarea"]
-  ],
-  inventory: [
-    ["item", "Item / gift", "text"], ["category", "Category", "text"],
-    ["quantity", "Quantity", "number"], ["owner", "Custodian", "text"],
-    ["location", "Storage location", "text"],
-    ["status", "Status", "select", "Needed|Ordered|Received|Distributed"],
-    ["notes", "Notes", "textarea"]
-  ],
-  transport: [
-    ["name", "Vehicle / route", "text"], ["driver", "Driver", "text"],
-    ["phone", "Driver phone", "tel"], ["pickup", "Pickup location", "text"],
-    ["drop", "Drop location", "text"], ["departure", "Pickup time", "datetime-local"],
-    ["guests", "Passengers / notes", "textarea"],
-    ["status", "Status", "select", "Planned|Confirmed|Completed"]
-  ]
 };
 
 const TABLE_COLUMNS = {
@@ -104,10 +79,11 @@ const TABLE_COLUMNS = {
   events: ["name", "date", "venue", "captain", "status"],
   guests: ["name", "side", "rsvp", "party", "room", "arrival"],
   vendors: ["name", "service", "contact", "phone", "amount", "status"],
-  payments: ["item", "category", "vendor", "amount", "paid", "due", "status"],
-  issues: ["title", "department", "owner", "severity", "status"],
-  inventory: ["item", "category", "quantity", "owner", "location", "status"],
-  transport: ["name", "driver", "phone", "pickup", "drop", "departure", "status"]
+  payments: ["item", "category", "vendor", "amount", "paid", "due", "status"]
+};
+const REQUIRED_FIELD = {
+  departments: "name", tasks: "title", events: "name",
+  guests: "name", vendors: "name", payments: "item"
 };
 
 const TITLES = Object.fromEntries(NAV_ITEMS.map(([id, title]) => [id, title]));
@@ -350,14 +326,11 @@ function sectionDescription(type) {
     guests: "RSVPs, rooms and arrivals for the people you love.",
     vendors: "Contacts, commitments and reporting details.",
     payments: "A shared view of planned costs, advances and balances.",
-    issues: "Questions and problems that need a named owner.",
-    inventory: "Gifts, supplies and the details of where they are kept.",
-    transport: "Routes, drivers, pickup times and passenger notes."
   }[type] || "Wedding team records.";
 }
 
 function singular(type) {
-  return { departments: "department", tasks: "task", events: "event", guests: "guest", vendors: "vendor", payments: "payment", issues: "issue", inventory: "item", transport: "route" }[type] || "record";
+  return { departments: "department", tasks: "task", events: "event", guests: "guest", vendors: "vendor", payments: "payment" }[type] || "record";
 }
 
 function fieldLabel(type, key) {
@@ -429,7 +402,7 @@ function openRecordDialog(type, record = null) {
       control = `<textarea id="${id}" name="${key}" rows="3">${escapeHTML(value)}</textarea>`;
     } else {
       const inputValue = kind === "datetime-local" && value ? String(value).slice(0, 16) : value;
-      control = `<input id="${id}" name="${key}" type="${kind}" value="${escapeHTML(inputValue)}" ${kind === "number" ? `min="0" step="${["party", "quantity"].includes(key) ? "1" : "any"}"` : ""} ${key === (type === "tasks" ? "title" : type === "events" ? "name" : type === "guests" ? "name" : type === "vendors" ? "name" : type === "departments" ? "name" : type === "payments" ? "item" : type === "issues" ? "title" : type === "inventory" ? "item" : "name") ? "required" : ""}>`;
+      control = `<input id="${id}" name="${key}" type="${kind}" value="${escapeHTML(inputValue)}" ${kind === "number" ? `min="0" step="${["party", "quantity"].includes(key) ? "1" : "any"}"` : ""} ${key === REQUIRED_FIELD[type] ? "required" : ""}>`;
     }
     return `<label class="${kind === "textarea" ? "wide" : ""}" for="${id}">${escapeHTML(label)}${control}</label>`;
   }).join("");
@@ -492,7 +465,9 @@ async function importBackup() {
     return notify("This backup does not contain all wedding sections. Export a JSON backup from the old tracker and try again.");
   }
   const count = RECORD_TYPES.reduce((sum, type) => sum + incoming[type].length, 0);
-  if (!confirm(`Import ${count} records into the shared database? Records with matching IDs will be updated.`)) return;
+  const skipped = OPTIONAL_BACKUP_TYPES.reduce((sum, type) => sum + (Array.isArray(incoming[type]) ? incoming[type].length : 0), 0);
+  const note = skipped ? ` This backup also contains ${skipped} optional issue, inventory or transport records. They will remain in your original backup and will not be imported.` : "";
+  if (!confirm(`Import ${count} core wedding records into the shared database? Records with matching IDs will be updated.${note}`)) return;
   for (const type of RECORD_TYPES) {
     const allowed = new Set(["id", "updated_by", ...FIELDS[type].map(([key]) => key)]);
     const rows = incoming[type].map((record, index) => {
@@ -605,7 +580,7 @@ async function start() {
       auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
     });
     supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) void loadMembership(session.user);
+      if (session?.user) setTimeout(() => void loadMembership(session.user), 0);
       else {
         currentUser = null;
         currentProfile = null;

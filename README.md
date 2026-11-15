@@ -1,25 +1,21 @@
-# Ankit & Kajal — Wedding Ledger
+# Ankit & Kajal — Wedding Desk
 
-A shared, mobile-friendly workspace for the wedding team. The site remains a static GitHub Pages app; Supabase provides accounts, separate tables for each tracker section and role-based access.
+A small, shared wedding-planning workspace for Ankit and Kajal. The app is a static site; Supabase supplies sign-in, data storage and role-based access.
 
-Planned separate site URL: <https://manthangandhi.github.io/ankit-kajal-wedding-ledger/>.
+## What it manages
 
-## Sections
+Tasks, events, departments, guests, vendors and payments. Account access and backups are kept under Settings. Optional issues, inventory and transport records are not part of the new tracker; the original Sheet and backup remain available while you decide what to do with those records.
 
-Overview, 24 departments, tasks, events, guests and rooms, vendors, payments, issues, inventory, transport, backups, and admin-managed account access.
+## Setup
 
-## Set up the database and first admin
+Use [SETUP.md](./SETUP.md). Run [`supabase/schema.sql`](./supabase/schema.sql) in Supabase, then sign up and promote the first admin. The browser project URL and publishable key are in [`public/supabase-config.js`](./public/supabase-config.js); never add the service-role key.
 
-Follow [SETUP.md](./SETUP.md). In short: create a free Supabase project, run [`supabase/schema.sql`](./supabase/schema.sql), add the project URL and public publishable key to [`supabase-config.js`](./supabase-config.js), then sign up and promote the first admin account in Supabase SQL Editor.
+New accounts start pending. Viewers can read; editors can manage wedding records; admins can also approve accounts. Database row-level security enforces those roles.
 
-The site uses pending, viewer, editor and admin roles. New accounts start pending and cannot read wedding records. Viewers can read; editors can add and change wedding records; admins can also approve accounts. Row-level security enforces these roles in the database.
+## Migration
 
-## Move existing wedding data
+Use [`public/legacy.html`](./public/legacy.html) to export data from the existing Sheet. Keep the JSON file and original Sheet private. Import it under **Settings & backup** after the new database is ready. The simplified app imports the six active sections; any issue, inventory or transport records stay in the original backup and Sheet.
 
-Before replacing the current site, open the existing tracker at [`legacy.html`](./legacy.html), connect it to the existing Sheet, download the Sheet’s data, then export a JSON backup. Keep that file private. After the new site is connected, sign in as an approved editor or admin and import the JSON backup in **Settings & backup**.
+## Hosting
 
-## Keep credentials safe
-
-The Supabase project URL and publishable/anon key are browser values. Database row-level security protects the records. Never put a service-role key, database password, guest list, or other private wedding data in the public repository.
-
-For the database schema, email confirmation, first-admin setup, local preview and GitHub Pages deployment, see [SETUP.md](./SETUP.md).
+The GitHub Pages site remains available at <https://manthangandhi.github.io/ankit-kajal-wedding-ledger/>. The repo is also configured for Vercel; see [SETUP.md](./SETUP.md) to connect it.
