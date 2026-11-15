@@ -7,12 +7,12 @@ const NAV_ITEMS = [
   ["dashboard", "Overview", "⌂"],
   ["tasks", "Tasks", "✓"],
   ["events", "Events", "✦"],
-  ["departments", "Departments", "♧"],
-  ["guests", "Guests & rooms", "♙"],
-  ["vendors", "Vendors", "▤"],
-  ["payments", "Budget & payments", "₹"],
-  ["users", "People & access", "◎"],
-  ["settings", "Settings & backup", "⚙"]
+  ["guests", "Guests", "♙"],
+  ["departments", "Team", "♧"],
+  ["money", "Money", "₹"],
+  ["settings", "Settings", "⚙"],
+  ["users", "Admin · access", "◎"],
+  ["more", "More", "···"]
 ];
 
 const DEPARTMENTS = [
@@ -76,7 +76,7 @@ const FIELDS = {
 const TABLE_COLUMNS = {
   departments: ["name", "lead", "phone", "status"],
   tasks: ["title", "department", "owner", "due", "priority", "status"],
-  events: ["name", "date", "venue", "captain", "status"],
+  events: ["name", "date", "venue", "captain", "phone", "status", "notes"],
   guests: ["name", "side", "rsvp", "party", "room", "arrival"],
   vendors: ["name", "service", "contact", "phone", "amount", "status"],
   payments: ["item", "category", "vendor", "amount", "paid", "due", "status"]
@@ -103,6 +103,9 @@ let searchTerm = "";
 let toastTimer;
 let loadingUserId = null;
 let realtimeChannel;
+let mobileMoreOpen = false;
+let moneyView = "vendors";
+let taskFilters = { status: "", department: "", owner: "", timing: "" };
 
 function notify(message) {
   const notice = $("notice");
@@ -228,17 +231,21 @@ function subscribeToChanges() {
 
 function renderNav() {
   const available = NAV_ITEMS.filter(([id]) => id !== "users" || currentProfile?.role === "admin");
-  $("main-nav").innerHTML = available.map(([id, title, icon]) => `
-    <button class="nav-link ${currentView === id ? "active" : ""}" data-view="${id}" type="button" aria-label="${escapeHTML(title)}" aria-current="${currentView === id ? "page" : "false"}">
+  const mobileCore = new Set(["dashboard", "tasks", "events", "guests"]);
+  $("main-nav").classList.toggle("mobile-more-open", mobileMoreOpen);
+  $("main-nav").innerHTML = available.filter(([id]) => id !== "more").map(([id, title, icon]) => `
+    <button class="nav-link ${currentView === id ? "active" : ""} ${mobileCore.has(id) ? "mobile-core" : "more-link"} ${mobileMoreOpen ? "more-open" : ""}" data-view="${id}" type="button" aria-label="${escapeHTML(title)}" aria-current="${currentView === id ? "page" : "false"}">
       <span class="nav-icon" aria-hidden="true">${icon}</span><span class="nav-label-text">${escapeHTML(title)}</span>
-    </button>`).join("");
+    </button>`).join("") + `<button class="nav-link mobile-more-toggle ${mobileMoreOpen ? "active" : ""}" data-more-toggle type="button" aria-expanded="${mobileMoreOpen}"><span class="nav-icon" aria-hidden="true">···</span><span class="nav-label-text">More</span></button>`;
 }
 
 function canEdit() { return ["admin", "editor"].includes(currentProfile?.role); }
 
 function setView(view) {
   if (view === "users" && currentProfile?.role !== "admin") return;
+  if (view === "more") { mobileMoreOpen = !mobileMoreOpen; renderNav(); return; }
   currentView = view;
+  mobileMoreOpen = false;
   searchTerm = "";
   renderNav();
   renderPage();
@@ -251,6 +258,8 @@ function renderPage() {
   $("quick-add").hidden = !canEdit() || !RECORD_TYPES.includes(currentView);
   const page = $("page-content");
   if (currentView === "dashboard") page.innerHTML = renderDashboard();
+  else if (currentView === "money") page.innerHTML = renderMoney();
+  else if (currentView === "events") page.innerHTML = renderEventList();
   else if (RECORD_TYPES.includes(currentView)) page.innerHTML = renderRecordList(currentView);
   else if (currentView === "users" && currentProfile.role === "admin") void renderUsers();
   else if (currentView === "settings") page.innerHTML = renderSettings();
@@ -260,42 +269,57 @@ function renderPage() {
 function renderDashboard() {
   const allTasks = listData.tasks;
   const openTasks = allTasks.filter((task) => task.status !== "Completed");
-  const highPriority = openTasks.filter((task) => ["High", "Critical"].includes(task.priority));
-  const confirmedGuests = listData.guests.filter((guest) => guest.rsvp === "Confirmed").reduce((sum, guest) => sum + Number(guest.party || 1), 0);
-  const totalBudget = listData.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-  const assignedDepartments = listData.departments.filter((department) => department.lead).length;
-  const upcoming = [...listData.events].filter((event) => event.date).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
-  const taskRows = (highPriority.length ? highPriority : openTasks).slice(0, 5);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
+  const datedTasks = openTasks.filter((task) => task.due).sort((a, b) => new Date(a.due) - new Date(b.due));
+  const overdue = datedTasks.filter((task) => new Date(task.due) < today);
+  const blocked = openTasks.filter((task) => task.status === "Blocked");
+  const dueSoon = datedTasks.filter((task) => new Date(task.due) >= today && new Date(task.due) <= nextWeek);
+  const unowned = openTasks.filter((task) => !task.owner);
+  const unassignedDepartments = listData.departments.filter((department) => !department.lead && department.status !== "Confirmed");
+  const upcoming = [...listData.events].filter((event) => event.date && new Date(event.date) >= today).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(0, 4);
   const noData = RECORD_TYPES.every((type) => listData[type].length === 0);
   return `
-    <section class="dashboard-hero">
-      <div class="dashboard-hero-copy">
-        <p class="eyebrow-small">ONE CELEBRATION · MANY HANDS</p>
-        <h2>For all the plans<br>behind <em>the day.</em></h2>
-        <div class="hero-rule"></div>
-        <p>Keep the details close, share the work, and leave a little room for the unexpected.</p>
-      </div>
-      <img src="./assets/haldi.svg" alt="Ankit and Kajal celebrating Haldi" loading="eager">
-    </section>
-    <section class="metric-grid" aria-label="Wedding progress">
-      ${metric("Teams with a lead", `${assignedDepartments}/${listData.departments.length || 24}`)}
-      ${metric("Open tasks", String(openTasks.length))}
-      ${metric("Confirmed guests", String(confirmedGuests))}
-      ${metric("Planned spend", currency(totalBudget))}
-    </section>
-    ${noData ? `<div class="warning-box">The shared database is connected, but it has no records yet. Ask an admin to import the existing wedding backup or add the first records.</div>` : ""}
-    <div class="dashboard-grid">
-      <section><div class="section-heading"><h3>Next on the list</h3><button class="text-link" data-view="tasks" type="button">All tasks&nbsp; →</button></div>
-        <div class="task-list">${taskRows.length ? taskRows.map((task) => `<div class="task-row"><div><b>${escapeHTML(task.title || "Untitled task")}</b><small>${escapeHTML(task.department || "No department")} · ${task.due ? `Due ${formatDate(task.due)}` : "No deadline"}</small></div><span class="status-tag ${task.priority === "Critical" ? "alert" : task.priority === "High" ? "waiting" : ""}">${escapeHTML(task.priority || task.status || "Open")}</span></div>`).join("") : `<p class="empty-copy">No open tasks. Add a task when something needs doing.</p>`}</div>
-      </section>
-      <section><div class="section-heading"><h3>Celebration dates</h3><button class="text-link" data-view="events" type="button">All events&nbsp; →</button></div>
-        <div class="event-strip">${upcoming.length ? upcoming.map(eventCard).join("") : `<p class="empty-copy">Dates and venues will appear here when the team adds them.</p>`}</div>
-      </section>
-    </div>`;
+    <header class="planner-welcome"><div><p class="eyebrow-small">ANKIT & KAJAL · WEDDING TEAM</p><h2>This week, at a glance.</h2><p>Start with what needs attention. Keep the rest of the plans close by.</p></div><button class="button button-secondary" type="button" data-view="events">Open event run sheet →</button></header>
+    ${noData ? `<div class="first-run"><p class="eyebrow-small">A GOOD PLACE TO BEGIN</p><h3>Set the plan in motion.</h3><p>Add your event dates, give each team a lead, then add the next tasks. No sample details are shown here.</p><div class="first-run-actions"><button class="button button-primary" data-view="events" type="button">Add event dates</button><button class="button button-secondary" data-view="departments" type="button">Assign team leads</button><button class="button button-secondary" data-view="tasks" type="button">Create first task</button></div></div>` : ""}
+    <div class="attention-grid"><section class="attention-main"><div class="section-heading"><h3>Needs attention</h3><button class="text-link" data-view="tasks" type="button">All tasks →</button></div>
+      ${attentionGroup("Overdue", overdue, "alert", "No overdue tasks.")}
+      ${attentionGroup("Blocked", blocked, "waiting", "Nothing is blocked.")}
+      ${attentionGroup("Due in the next 7 days", dueSoon, "", "No tasks due this week.")}
+      ${attentionGroup("Needs an owner", unowned, "waiting", "Every open task has an owner.")}
+    </section><aside class="attention-side"><section><div class="section-heading"><h3>Team leads</h3><button class="text-link" data-view="departments" type="button">Open team →</button></div>
+      ${listData.departments.length ? (unassignedDepartments.length ? `<p class="attention-note">${unassignedDepartments.length} team ${unassignedDepartments.length === 1 ? "area needs" : "areas need"} a lead</p><ul class="compact-list">${unassignedDepartments.slice(0, 5).map((d) => `<li>${escapeHTML(d.name || "Unnamed team")}</li>`).join("")}</ul>` : `<p class="empty-copy">All listed teams have a lead.</p>`) : `<p class="empty-copy">No team areas yet. Add departments as they are agreed.</p>`}
+    </section><section><div class="section-heading"><h3>Next celebrations</h3><button class="text-link" data-view="events" type="button">All events →</button></div>
+      <div class="event-strip">${upcoming.length ? upcoming.map(eventCard).join("") : `<p class="empty-copy">Dates will appear here once the team adds them.</p>`}</div>
+    </section></aside></div>`;
 }
 
-function metric(label, value) {
-  return `<div class="metric"><span class="metric-label">${escapeHTML(label)}</span><b class="metric-value">${escapeHTML(value)}</b></div>`;
+function attentionGroup(label, tasks, tagClass, emptyMessage) {
+  return `<div class="attention-group"><h4>${escapeHTML(label)} <span>${tasks.length}</span></h4>${tasks.length ? `<div class="task-list">${tasks.slice(0, 5).map((task) => `<div class="task-row"><div><b>${escapeHTML(task.title || "Untitled task")}</b><small>${escapeHTML(task.owner || "Owner not set")} · ${escapeHTML(task.department || "Team not set")} · ${task.due ? `Due ${formatDate(task.due)}` : "Date not set"}</small></div><span class="status-tag ${tagClass}">${escapeHTML(task.status || task.priority || "Open")}</span></div>`).join("")}</div>` : `<p class="empty-copy">${escapeHTML(emptyMessage)}</p>`}</div>`;
+}
+
+function renderMoney() {
+  const type = moneyView === "payments" ? "payments" : "vendors";
+  const records = listData[type];
+  const rows = records.map((r) => type === "vendors" ? { ...r, balance: r.amount == null || r.paid == null ? null : Math.max(0, Number(r.amount) - Number(r.paid)) } : r);
+  const columns = type === "vendors" ? ["name", "service", "contact", "phone", "amount", "paid", "balance", "status"] : TABLE_COLUMNS.payments;
+  const filtered = rows.filter((r) => !searchTerm || Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(searchTerm.toLowerCase())));
+  return `<header class="page-heading"><div><p class="eyebrow-small">WEDDING OPERATIONS</p><h2>Money</h2><p>Keep vendor commitments and individual payments in view, with amounts taken from the records.</p></div>${canEdit() ? `<button class="button button-primary" data-add="${type}" type="button">+ Add ${type === "vendors" ? "vendor" : "payment"}</button>` : ""}</header>
+    <div class="subnav" role="tablist" aria-label="Money views"><button role="tab" aria-selected="${type === "vendors"}" class="${type === "vendors" ? "selected" : ""}" data-money-view="vendors">Vendors</button><button role="tab" aria-selected="${type === "payments"}" class="${type === "payments" ? "selected" : ""}" data-money-view="payments">Payments</button></div>
+    <div class="records-toolbar"><input class="search-input" id="record-search" type="search" placeholder="Find ${type === "vendors" ? "a vendor" : "a payment"}…" value="${escapeHTML(searchTerm)}" aria-label="Search ${type}"><span class="record-count">${filtered.length} ${filtered.length === 1 ? "record" : "records"}</span></div>
+    <div class="table-frame"><table class="data-table"><thead><tr>${columns.map((key) => `<th>${escapeHTML(key === "balance" ? "Balance" : fieldLabel(type, key))}</th>`).join("")}${canEdit() ? "<th>Actions</th>" : ""}</tr></thead><tbody>${filtered.map((record) => `<tr>${columns.map((key, i) => `<td class="${i === 0 ? "cell-primary" : ""}">${key === "balance" ? (record.balance == null ? "<span class=\"muted\">Not set</span>" : escapeHTML(currency(record.balance))) : formatCell(type, key, record[key])}</td>`).join("")}${canEdit() ? `<td><div class="table-actions"><button class="table-action" data-edit="${type}" data-id="${escapeHTML(record.id)}" type="button">Edit</button><button class="table-action delete" data-delete="${type}" data-id="${escapeHTML(record.id)}" type="button">Delete</button></div></td>` : ""}</tr>`).join("") || `<tr><td class="empty-cell" colspan="${columns.length + (canEdit() ? 1 : 0)}">${searchTerm ? "No matching records." : `No ${type} records yet.`}</td></tr>`}</tbody></table></div>`;
+}
+
+function renderEventList() {
+  const events = listData.events.filter((event) => !searchTerm || Object.values(event).some((value) => String(value ?? "").toLowerCase().includes(searchTerm.toLowerCase())))
+    .sort((a, b) => (a.date ? new Date(a.date).getTime() : Infinity) - (b.date ? new Date(b.date).getTime() : Infinity));
+  return `<header class="page-heading"><div><p class="eyebrow-small">WEDDING DAY · RUN OF SHOW</p><h2>Events & run sheet</h2><p>Keep each celebration’s timing, place, lead and contact together. Add the cue order in “Run of show / notes”.</p></div>${canEdit() ? `<button class="button button-primary" data-add="events" type="button">+ Add event</button>` : ""}</header>
+    <div class="records-toolbar"><input class="search-input" id="record-search" type="search" placeholder="Find an event…" value="${escapeHTML(searchTerm)}" aria-label="Search events"><span class="record-count">${events.length} ${events.length === 1 ? "event" : "events"}</span></div>
+    <div class="run-sheet">${events.length ? events.map((event, index) => {
+      const callNumber = String(event.phone || "").replace(/[^+\d]/g, "");
+      return `<article class="run-event"><div class="run-event-marker"><span>${String(index + 1).padStart(2, "0")}</span></div><div class="run-event-body"><div class="run-event-heading"><div><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div><span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span></div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div></article>`;
+    }).join("") : `<p class="empty-copy">${searchTerm ? "No matching events." : "No events added yet. Add the real dates and venues when they are confirmed."}</p>`}</div>`;
 }
 
 function eventCard(event) {
@@ -312,9 +336,14 @@ function titleFor(type) {
 function renderRecordList(type) {
   const records = listData[type] || [];
   const columns = TABLE_COLUMNS[type] || [];
-  const filtered = records.filter((record) => !searchTerm || Object.values(record).some((value) => String(value ?? "").toLowerCase().includes(searchTerm.toLowerCase())));
+  let filtered = records.filter((record) => !searchTerm || Object.values(record).some((value) => String(value ?? "").toLowerCase().includes(searchTerm.toLowerCase())));
+  if (type === "tasks") {
+    filtered = filtered.filter((record) => (!taskFilters.status || record.status === taskFilters.status) && (!taskFilters.department || record.department === taskFilters.department) && (!taskFilters.owner || record.owner === taskFilters.owner) && (!taskFilters.timing || (taskFilters.timing === "overdue" ? record.status !== "Completed" && record.due && new Date(record.due) < new Date(new Date().setHours(0, 0, 0, 0)) : taskFilters.timing === "week" ? record.due && new Date(record.due) >= new Date(new Date().setHours(0, 0, 0, 0)) && new Date(record.due) <= new Date(Date.now() + 7 * 86400000) : !record.due)));
+    filtered.sort((a, b) => (a.status === "Completed") - (b.status === "Completed") || (a.due ? new Date(a.due).getTime() : Infinity) - (b.due ? new Date(b.due).getTime() : Infinity));
+  }
+  const filterMarkup = type === "tasks" ? `<div class="task-filters"><label>Status<select data-task-filter="status"><option value="">All statuses</option>${["Not Started", "In Progress", "Blocked", "Completed"].map((v) => `<option ${taskFilters.status === v ? "selected" : ""}>${v}</option>`).join("")}</select></label><label>Team<select data-task-filter="department"><option value="">All teams</option>${[...new Set(listData.departments.map((d) => d.name).filter(Boolean))].map((v) => `<option ${taskFilters.department === v ? "selected" : ""}>${escapeHTML(v)}</option>`).join("")}${[...new Set(records.map((r) => r.department).filter(Boolean))].filter((v) => !listData.departments.some((d) => d.name === v)).map((v) => `<option ${taskFilters.department === v ? "selected" : ""}>${escapeHTML(v)}</option>`).join("")}</select></label><label>Owner<select data-task-filter="owner"><option value="">All owners</option>${[...new Set(records.map((r) => r.owner).filter(Boolean))].sort().map((v) => `<option ${taskFilters.owner === v ? "selected" : ""}>${escapeHTML(v)}</option>`).join("")}</select></label><label>Deadline<select data-task-filter="timing"><option value="">Any date</option><option value="week" ${taskFilters.timing === "week" ? "selected" : ""}>Next 7 days</option><option value="overdue" ${taskFilters.timing === "overdue" ? "selected" : ""}>Overdue</option><option value="undated" ${taskFilters.timing === "undated" ? "selected" : ""}>No date set</option></select></label></div>` : "";
   return `<header class="page-heading"><div><p class="eyebrow-small">WEDDING OPERATIONS</p><h2>${escapeHTML(titleFor(type))}</h2><p>${escapeHTML(sectionDescription(type))}</p></div>${canEdit() ? `<button class="button button-primary" type="button" data-add="${type}">+ Add ${escapeHTML(singular(type))}</button>` : ""}</header>
-    <div class="records-toolbar"><input class="search-input" id="record-search" type="search" placeholder="Find a ${escapeHTML(singular(type))}…" value="${escapeHTML(searchTerm)}" aria-label="Search ${escapeHTML(titleFor(type))}"><span class="record-count">${filtered.length} ${filtered.length === 1 ? "record" : "records"}</span></div>
+    <div class="records-toolbar"><input class="search-input" id="record-search" type="search" placeholder="Find a ${escapeHTML(singular(type))}…" value="${escapeHTML(searchTerm)}" aria-label="Search ${escapeHTML(titleFor(type))}"><span class="record-count">${filtered.length} ${filtered.length === 1 ? "record" : "records"}</span></div>${filterMarkup}
     <div class="table-frame"><table class="data-table"><thead><tr>${columns.map((key) => `<th>${escapeHTML(fieldLabel(type, key))}</th>`).join("")}${canEdit() ? "<th>Actions</th>" : ""}</tr></thead><tbody>${filtered.length ? filtered.map((record) => `<tr>${columns.map((key, i) => `<td class="${i === 0 ? "cell-primary" : ""}">${formatCell(type, key, record[key])}</td>`).join("")}${canEdit() ? `<td><div class="table-actions"><button class="table-action" type="button" data-edit="${escapeHTML(type)}" data-id="${escapeHTML(record.id)}">Edit</button><button class="table-action delete" type="button" data-delete="${escapeHTML(type)}" data-id="${escapeHTML(record.id)}">Delete</button></div></td>` : ""}</tr>`).join("") : `<tr><td class="empty-cell" colspan="${columns.length + (canEdit() ? 1 : 0)}">${searchTerm ? "No matching records." : "Nothing here yet. Add the first record when you’re ready."}</td></tr>`}</tbody></table></div>`;
 }
 
@@ -338,7 +367,7 @@ function fieldLabel(type, key) {
 }
 
 function formatCell(type, key, value) {
-  if (value === null || value === undefined || value === "") return "<span class=\"muted\">—</span>";
+  if (value === null || value === undefined || value === "") return `<span class="muted">${["due", "date", "arrival", "departure"].includes(key) ? "Date to confirm" : "Not set"}</span>`;
   if (["due", "date", "arrival", "departure"].includes(key)) return escapeHTML(formatDate(value));
   if (["amount", "paid"].includes(key) && ["payments", "vendors"].includes(type)) return escapeHTML(currency(Number(value)));
   if (key === "status" || key === "priority" || key === "rsvp" || key === "severity") {
@@ -503,6 +532,10 @@ function bindEvents() {
     if (mode) return setAuthMode(mode.dataset.authMode);
     const nav = event.target.closest("[data-view]");
     if (nav) return setView(nav.dataset.view);
+    const more = event.target.closest("[data-more-toggle]");
+    if (more) return setView("more");
+    const moneyTab = event.target.closest("[data-money-view]");
+    if (moneyTab) { moneyView = moneyTab.dataset.moneyView; searchTerm = ""; renderPage(); return; }
     const add = event.target.closest("[data-add]");
     if (add) return openRecordDialog(add.dataset.add);
     const edit = event.target.closest("[data-edit]");
@@ -530,6 +563,8 @@ function bindEvents() {
   $("page-content").addEventListener("change", (event) => {
     const role = event.target.closest("[data-role-user]");
     if (role) void changeUserRole(role.dataset.roleUser, role.value);
+    const filter = event.target.closest("[data-task-filter]");
+    if (filter) { taskFilters[filter.dataset.taskFilter] = filter.value; renderPage(); }
   });
   $("signin-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -547,7 +582,7 @@ function bindEvents() {
     });
     if (error) return notify(error.message);
     if (!data.session) {
-      notify("Account created. Try signing in. If Supabase asks for email confirmation, switch off Confirm email in the Email provider settings. Admin approval is still required.");
+      notify("Account created. Sign in to check your access request. A wedding admin still needs to approve it.");
       setAuthMode("signin");
     } else {
       notify("Account created. A wedding admin needs to approve access.");
