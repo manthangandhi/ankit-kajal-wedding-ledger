@@ -218,25 +218,22 @@ async function loadMembership(user) {
 
 async function fetchRecords(quiet = false) {
   if (!currentUser) return;
-  const rows = [];
-  for (let start = 0; ; start += 1000) {
-    const { data, error } = await supabase
-      .from("wedding_records")
-      .select("record_type, record_id, data")
-      .range(start, start + 999);
-    if (error) {
-      if (!quiet) notify(`Could not load wedding records: ${error.message}`);
-      return;
+  const loaded = await Promise.all(RECORD_TYPES.map(async (type) => {
+    const rows = [];
+    for (let start = 0; ; start += 1000) {
+      const { data, error } = await supabase.from(type).select("*").range(start, start + 999);
+      if (error) return { type, error };
+      rows.push(...(data || []));
+      if (!data || data.length < 1000) break;
     }
-    rows.push(...(data || []));
-    if (!data || data.length < 1000) break;
+    return { type, rows };
+  }));
+  const failed = loaded.find((result) => result.error);
+  if (failed) {
+    if (!quiet) notify(`Could not load ${failed.type}: ${failed.error.message}`);
+    return;
   }
-  for (const type of RECORD_TYPES) listData[type] = [];
-  for (const row of rows) {
-    if (RECORD_TYPES.includes(row.record_type)) {
-      listData[row.record_type].push({ ...row.data, id: row.record_id });
-    }
-  }
+  for (const { type, rows } of loaded) listData[type] = rows;
   for (const type of RECORD_TYPES) {
     listData[type].sort((a, b) => String(a.name || a.title || a.item || "").localeCompare(String(b.name || b.title || b.item || "")));
   }
@@ -246,9 +243,11 @@ async function fetchRecords(quiet = false) {
 
 function subscribeToChanges() {
   if (realtimeChannel || !supabase) return;
-  realtimeChannel = supabase.channel("wedding-ledger-records")
-    .on("postgres_changes", { event: "*", schema: "public", table: "wedding_records" }, () => fetchRecords(true))
-    .subscribe();
+  realtimeChannel = supabase.channel("wedding-ledger-records");
+  for (const table of RECORD_TYPES) {
+    realtimeChannel.on("postgres_changes", { event: "*", schema: "public", table }, () => fetchRecords(true));
+  }
+  realtimeChannel.subscribe();
 }
 
 function renderNav() {
@@ -430,7 +429,7 @@ function openRecordDialog(type, record = null) {
       control = `<textarea id="${id}" name="${key}" rows="3">${escapeHTML(value)}</textarea>`;
     } else {
       const inputValue = kind === "datetime-local" && value ? String(value).slice(0, 16) : value;
-      control = `<input id="${id}" name="${key}" type="${kind}" value="${escapeHTML(inputValue)}" ${kind === "number" ? "min=\"0\" step=\"any\"" : ""} ${key === (type === "tasks" ? "title" : type === "events" ? "name" : type === "guests" ? "name" : type === "vendors" ? "name" : type === "departments" ? "name" : type === "payments" ? "item" : type === "issues" ? "title" : type === "inventory" ? "item" : "name") ? "required" : ""}>`;
+      control = `<input id="${id}" name="${key}" type="${kind}" value="${escapeHTML(inputValue)}" ${kind === "number" ? `min="0" step="${["party", "quantity"].includes(key) ? "1" : "any"}"` : ""} ${key === (type === "tasks" ? "title" : type === "events" ? "name" : type === "guests" ? "name" : type === "vendors" ? "name" : type === "departments" ? "name" : type === "payments" ? "item" : type === "issues" ? "title" : type === "inventory" ? "item" : "name") ? "required" : ""}>`;
     }
     return `<label class="${kind === "textarea" ? "wide" : ""}" for="${id}">${escapeHTML(label)}${control}</label>`;
   }).join("");
@@ -444,17 +443,12 @@ async function saveRecord(form) {
   const record = {};
   for (const [key, , kind] of FIELDS[activeRecordType]) {
     const value = values.get(key);
-    record[key] = kind === "number" ? (value === "" ? "" : Number(value)) : String(value ?? "").trim();
+    record[key] = kind === "number" ? (value === "" ? null : Number(value)) : String(value ?? "").trim();
   }
   record.id = editingRecordId || crypto.randomUUID();
   const button = form.querySelector('[type="submit"]');
   button.disabled = true;
-  const { error } = await supabase.from("wedding_records").upsert({
-    record_type: activeRecordType,
-    record_id: record.id,
-    data: record,
-    updated_by: currentUser.id
-  }, { onConflict: "record_type,record_id" });
+  const { error } = await supabase.from(activeRecordType).upsert({ ...record, updated_by: currentUser.id });
   button.disabled = false;
   if (error) {
     notify(`Could not save: ${error.message}`);
@@ -467,7 +461,7 @@ async function saveRecord(form) {
 
 async function deleteRecord(type, id) {
   if (!canEdit() || !confirm("Delete this record from the shared wedding workspace?")) return;
-  const { error } = await supabase.from("wedding_records").delete().eq("record_type", type).eq("record_id", id);
+  const { error } = await supabase.from(type).delete().eq("id", id);
   if (error) return notify(`Could not delete: ${error.message}`);
   notify("Record deleted.");
   await fetchRecords(true);
@@ -499,13 +493,19 @@ async function importBackup() {
   }
   const count = RECORD_TYPES.reduce((sum, type) => sum + incoming[type].length, 0);
   if (!confirm(`Import ${count} records into the shared database? Records with matching IDs will be updated.`)) return;
-  const rows = RECORD_TYPES.flatMap((type) => incoming[type].map((record, index) => {
-    const id = String(record.id || `${type}-${Date.now()}-${index}`);
-    return { record_type: type, record_id: id, data: { ...record, id }, updated_by: currentUser.id };
-  }));
-  for (let start = 0; start < rows.length; start += 250) {
-    const { error } = await supabase.from("wedding_records").upsert(rows.slice(start, start + 250), { onConflict: "record_type,record_id" });
-    if (error) return notify(`Import stopped: ${error.message}`);
+  for (const type of RECORD_TYPES) {
+    const allowed = new Set(["id", "updated_by", ...FIELDS[type].map(([key]) => key)]);
+    const rows = incoming[type].map((record, index) => {
+      const row = { id: String(record.id || `${type}-${Date.now()}-${index}`), updated_by: currentUser.id };
+      for (const [key, , kind] of FIELDS[type]) {
+        if (record[key] !== undefined) row[key] = kind === "number" ? (record[key] === "" || record[key] === null ? null : Number(record[key])) : String(record[key] ?? "");
+      }
+      return Object.fromEntries(Object.entries(row).filter(([key]) => allowed.has(key)));
+    });
+    for (let start = 0; start < rows.length; start += 250) {
+      const { error } = await supabase.from(type).upsert(rows.slice(start, start + 250));
+      if (error) return notify(`Import stopped in ${type}: ${error.message}`);
+    }
   }
   await fetchRecords(true);
   notify(`${count} records imported into the shared database.`);
@@ -572,7 +572,7 @@ function bindEvents() {
     });
     if (error) return notify(error.message);
     if (!data.session) {
-      notify("Check your email to confirm the account, then sign in. Admin approval is still required.");
+      notify("Account created. Try signing in. If Supabase asks for email confirmation, switch off Confirm email in the Email provider settings. Admin approval is still required.");
       setAuthMode("signin");
     } else {
       notify("Account created. A wedding admin needs to approve access.");

@@ -7,7 +7,7 @@ The site stays on GitHub Pages. Supabase supplies the database and account sign-
 1. Create a Supabase account and a new project for **Ankit & Kajal Wedding Ledger**.
 2. Choose a strong database password and keep it in your password manager. It is not used by the website.
 3. In the Supabase dashboard, open **SQL Editor → New query**.
-4. Copy all of [`supabase/schema.sql`](./supabase/schema.sql) into the editor and run it. It creates the tables, role policies, signup profile trigger, and starter departments/events.
+4. Copy all of [`supabase/schema.sql`](./supabase/schema.sql) into the editor and run it. It creates separate `departments`, `tasks`, `events`, `guests`, `vendors`, `payments`, `issues`, `inventory` and `transport` tables, plus `profiles` for accounts. It also adds role policies and starter departments/events.
 
 ## 2. Connect this website
 
@@ -27,7 +27,7 @@ The site stays on GitHub Pages. Supabase supplies the database and account sign-
 ## 3. Create the first admin account
 
 1. Publish the configured site to GitHub Pages, or preview it locally using the instructions below.
-2. Use **Request access** to sign up with the email address that should own the wedding workspace. Confirm the email if Supabase asks.
+2. Use **Request access** to sign up with the email address that should own the wedding workspace. With **Confirm email** disabled, you can sign in right away.
 3. In Supabase SQL Editor, replace the example email and run this once:
 
    ```sql
@@ -42,7 +42,13 @@ The site stays on GitHub Pages. Supabase supplies the database and account sign-
 
 New sign-ups default to `pending`, which has no access to wedding records. This prevents a new account from promoting itself or reading guest information. Viewers can read; editors can manage wedding records; admins can manage both records and account access.
 
-## 4. Configure sign-in email links
+## 4. Turn off email confirmation
+
+In Supabase, open **Authentication → Sign In / Providers → Email** and switch off **Confirm email**. New accounts can then sign in immediately without checking their inbox. The app still marks every new account `pending`; an admin must approve it before it can read or change wedding data.
+
+If your dashboard labels the menu differently, search the Authentication settings for **Confirm email**. This is a Supabase project setting; it cannot be changed from the website's public key.
+
+## 5. Configure sign-in redirect URLs
 
 In **Authentication → URL Configuration**, set the site URL to:
 
@@ -57,9 +63,7 @@ https://manthangandhi.github.io/ankit-kajal-wedding-ledger/**
 http://127.0.0.1:4173/**
 ```
 
-For a private family workspace, leave email confirmation enabled. Supabase’s free email sending is rate-limited; a custom SMTP provider can be added if invitations exceed those limits.
-
-## 5. Bring across the current Google Sheet data
+## 6. Bring across the current Google Sheet data
 
 Do this before relying on the new database as the shared source of truth:
 

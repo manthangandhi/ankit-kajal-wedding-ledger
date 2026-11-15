@@ -1,7 +1,5 @@
 -- Ankit & Kajal Wedding Ledger
--- Run this whole file once in Supabase SQL Editor.
--- The browser uses only a publishable/anon key. Row-level security below
--- keeps pending accounts out and gives approved users role-based access.
+-- Run once in Supabase SQL Editor. Each tracker section has its own table.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -12,21 +10,136 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.wedding_records (
-  record_type text not null check (record_type in (
-    'departments', 'tasks', 'events', 'guests', 'vendors',
-    'payments', 'issues', 'inventory', 'transport'
-  )),
-  record_id text not null,
-  data jsonb not null check (jsonb_typeof(data) = 'object'),
+create table if not exists public.departments (
+  id text primary key,
+  name text not null,
+  lead text not null default '',
+  phone text not null default '',
+  backup text not null default '',
+  "backupPhone" text not null default '',
+  status text not null default 'Unassigned',
+  notes text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  updated_by uuid references auth.users(id) on delete set null,
-  primary key (record_type, record_id)
+  updated_by uuid references auth.users(id) on delete set null
 );
 
-create index if not exists wedding_records_type_idx
-  on public.wedding_records (record_type);
+create table if not exists public.tasks (
+  id text primary key,
+  title text not null,
+  department text not null default '',
+  owner text not null default '',
+  due text not null default '',
+  priority text not null default 'Medium',
+  status text not null default 'Not Started',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.events (
+  id text primary key,
+  name text not null,
+  date text not null default '',
+  venue text not null default '',
+  captain text not null default '',
+  phone text not null default '',
+  status text not null default 'Planning',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.guests (
+  id text primary key,
+  name text not null,
+  phone text not null default '',
+  side text not null default 'Other',
+  rsvp text not null default 'Pending',
+  party integer,
+  room text not null default '',
+  arrival text not null default '',
+  transport text not null default '',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.vendors (
+  id text primary key,
+  name text not null,
+  service text not null default '',
+  contact text not null default '',
+  phone text not null default '',
+  amount numeric(12,2),
+  paid numeric(12,2),
+  arrival text not null default '',
+  status text not null default 'Enquiry',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.payments (
+  id text primary key,
+  item text not null,
+  category text not null default '',
+  vendor text not null default '',
+  amount numeric(12,2),
+  paid numeric(12,2),
+  due text not null default '',
+  status text not null default 'Pending',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.issues (
+  id text primary key,
+  title text not null,
+  department text not null default '',
+  owner text not null default '',
+  severity text not null default 'Medium',
+  status text not null default 'Open',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.inventory (
+  id text primary key,
+  item text not null,
+  category text not null default '',
+  quantity numeric(10,2),
+  owner text not null default '',
+  location text not null default '',
+  status text not null default 'Needed',
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+create table if not exists public.transport (
+  id text primary key,
+  name text not null,
+  driver text not null default '',
+  phone text not null default '',
+  pickup text not null default '',
+  drop text not null default '',
+  departure text not null default '',
+  guests text not null default '',
+  status text not null default 'Planned',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
 
 create or replace function public.create_wedding_profile()
 returns trigger
@@ -57,7 +170,6 @@ create trigger on_auth_user_created_wedding_profile
   after insert on auth.users
   for each row execute procedure public.create_wedding_profile();
 
--- This helper runs as its owner so profile checks do not recurse through RLS.
 create or replace function public.wedding_user_role()
 returns text
 language sql
@@ -75,46 +187,18 @@ revoke all on function public.wedding_user_role() from public, anon;
 grant execute on function public.wedding_user_role() to authenticated;
 
 alter table public.profiles enable row level security;
-alter table public.wedding_records enable row level security;
-
 drop policy if exists "members can see their own profile; admins can see all" on public.profiles;
 create policy "members can see their own profile; admins can see all"
   on public.profiles for select to authenticated
   using (id = (select auth.uid()) or (select public.wedding_user_role()) = 'admin');
-
 drop policy if exists "admins can change account roles" on public.profiles;
 create policy "admins can change account roles"
   on public.profiles for update to authenticated
   using ((select public.wedding_user_role()) = 'admin')
   with check ((select public.wedding_user_role()) = 'admin');
-
-drop policy if exists "approved members can read wedding records" on public.wedding_records;
-create policy "approved members can read wedding records"
-  on public.wedding_records for select to authenticated
-  using ((select public.wedding_user_role()) in ('viewer', 'editor', 'admin'));
-
-drop policy if exists "editors and admins can add wedding records" on public.wedding_records;
-create policy "editors and admins can add wedding records"
-  on public.wedding_records for insert to authenticated
-  with check ((select public.wedding_user_role()) in ('editor', 'admin'));
-
-drop policy if exists "editors and admins can update wedding records" on public.wedding_records;
-create policy "editors and admins can update wedding records"
-  on public.wedding_records for update to authenticated
-  using ((select public.wedding_user_role()) in ('editor', 'admin'))
-  with check ((select public.wedding_user_role()) in ('editor', 'admin'));
-
-drop policy if exists "editors and admins can delete wedding records" on public.wedding_records;
-create policy "editors and admins can delete wedding records"
-  on public.wedding_records for delete to authenticated
-  using ((select public.wedding_user_role()) in ('editor', 'admin'));
-
 revoke all on public.profiles from anon, authenticated;
 grant select on public.profiles to authenticated;
 grant update (role) on public.profiles to authenticated;
-
-revoke all on public.wedding_records from anon, authenticated;
-grant select, insert, update, delete on public.wedding_records to authenticated;
 
 create or replace function public.touch_wedding_record()
 returns trigger
@@ -127,53 +211,53 @@ begin
 end;
 $$;
 
-drop trigger if exists wedding_records_touch_updated_at on public.wedding_records;
-create trigger wedding_records_touch_updated_at
-  before update on public.wedding_records
-  for each row execute procedure public.touch_wedding_record();
-
--- Realtime lets signed-in coordinators see another member's changes promptly.
 do $$
+declare
+  table_name text;
+  table_names text[] := array[
+    'departments', 'tasks', 'events', 'guests', 'vendors',
+    'payments', 'issues', 'inventory', 'transport'
+  ];
 begin
-  alter publication supabase_realtime add table public.wedding_records;
-exception
-  when duplicate_object or undefined_object then null;
+  foreach table_name in array table_names loop
+    execute format('alter table public.%I enable row level security', table_name);
+    execute format('drop policy if exists %I on public.%I', 'approved members read', table_name);
+    execute format('create policy %I on public.%I for select to authenticated using ((select public.wedding_user_role()) in (''viewer'', ''editor'', ''admin''))', 'approved members read', table_name);
+    execute format('drop policy if exists %I on public.%I', 'editors and admins add', table_name);
+    execute format('create policy %I on public.%I for insert to authenticated with check ((select public.wedding_user_role()) in (''editor'', ''admin''))', 'editors and admins add', table_name);
+    execute format('drop policy if exists %I on public.%I', 'editors and admins update', table_name);
+    execute format('create policy %I on public.%I for update to authenticated using ((select public.wedding_user_role()) in (''editor'', ''admin'')) with check ((select public.wedding_user_role()) in (''editor'', ''admin''))', 'editors and admins update', table_name);
+    execute format('drop policy if exists %I on public.%I', 'editors and admins delete', table_name);
+    execute format('create policy %I on public.%I for delete to authenticated using ((select public.wedding_user_role()) in (''editor'', ''admin''))', 'editors and admins delete', table_name);
+    execute format('revoke all on public.%I from anon, authenticated', table_name);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', table_name);
+    execute format('drop trigger if exists touch_updated_at on public.%I', table_name);
+    execute format('create trigger touch_updated_at before update on public.%I for each row execute procedure public.touch_wedding_record()', table_name);
+    begin
+      execute format('alter publication supabase_realtime add table public.%I', table_name);
+    exception
+      when duplicate_object or undefined_object then null;
+    end;
+  end loop;
 end;
 $$;
 
--- Start with the 24 team areas and the seven wedding events. Running this
--- setup more than once will not overwrite data already entered by the family.
-insert into public.wedding_records (record_type, record_id, data)
-select
-  'departments',
-  'dept-' || lpad(item.ordinality::text, 2, '0'),
-  jsonb_build_object(
-    'id', 'dept-' || lpad(item.ordinality::text, 2, '0'),
-    'name', item.name,
-    'lead', '', 'phone', '', 'backup', '', 'backupPhone', '',
-    'status', 'Unassigned', 'notes', ''
-  )
-from unnest(array[
-  'Invitations & RSVP', 'Guest Reception', 'Accommodation', 'Transportation',
-  'VIP & Elderly Care', 'Haldi & Mehendi', 'Sangeet & Entertainment',
-  'Wedding Rituals', 'Baraat & Procession', 'Bride & Groom Readiness',
-  'Venue Management', 'Decoration & Florals', 'Catering & Food',
-  'Photography & Video', 'Sound, Light & Technical', 'Vendor Coordination',
-  'Inventory & Gifts', 'Finance & Payments', 'Security & Valuables',
-  'Medical & Emergency', 'Parking & Traffic', 'Family Coordination',
-  'Communication & Announcements', 'Troubleshooting & Contingency'
-]) with ordinality as item(name, ordinality)
-on conflict (record_type, record_id) do nothing;
+insert into public.departments (id, name) values
+  ('dept-01', 'Invitations & RSVP'), ('dept-02', 'Guest Reception'),
+  ('dept-03', 'Accommodation'), ('dept-04', 'Transportation'),
+  ('dept-05', 'VIP & Elderly Care'), ('dept-06', 'Haldi & Mehendi'),
+  ('dept-07', 'Sangeet & Entertainment'), ('dept-08', 'Wedding Rituals'),
+  ('dept-09', 'Baraat & Procession'), ('dept-10', 'Bride & Groom Readiness'),
+  ('dept-11', 'Venue Management'), ('dept-12', 'Decoration & Florals'),
+  ('dept-13', 'Catering & Food'), ('dept-14', 'Photography & Video'),
+  ('dept-15', 'Sound, Light & Technical'), ('dept-16', 'Vendor Coordination'),
+  ('dept-17', 'Inventory & Gifts'), ('dept-18', 'Finance & Payments'),
+  ('dept-19', 'Security & Valuables'), ('dept-20', 'Medical & Emergency'),
+  ('dept-21', 'Parking & Traffic'), ('dept-22', 'Family Coordination'),
+  ('dept-23', 'Communication & Announcements'), ('dept-24', 'Troubleshooting & Contingency')
+on conflict (id) do nothing;
 
-insert into public.wedding_records (record_type, record_id, data)
-select
-  'events',
-  'evt-' || lpad(item.ordinality::text, 2, '0'),
-  jsonb_build_object(
-    'id', 'evt-' || lpad(item.ordinality::text, 2, '0'),
-    'name', item.name, 'date', '', 'venue', '', 'captain', '', 'phone', '',
-    'status', 'Planning', 'notes', ''
-  )
-from unnest(array['Mehendi', 'Haldi', 'Sangeet', 'Baraat', 'Shaadi', 'Reception', 'Vidaai'])
-  with ordinality as item(name, ordinality)
-on conflict (record_type, record_id) do nothing;
+insert into public.events (id, name) values
+  ('evt-01', 'Mehendi'), ('evt-02', 'Haldi'), ('evt-03', 'Sangeet'),
+  ('evt-04', 'Baraat'), ('evt-05', 'Shaadi'), ('evt-06', 'Reception'), ('evt-07', 'Vidaai')
+on conflict (id) do nothing;

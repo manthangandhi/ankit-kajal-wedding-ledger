@@ -1,6 +1,6 @@
 # Ankit & Kajal — Wedding Ledger
 
-A shared, mobile-friendly workspace for the wedding team. The site remains a static GitHub Pages app; Supabase provides accounts, the shared database and role-based access.
+A shared, mobile-friendly workspace for the wedding team. The site remains a static GitHub Pages app; Supabase provides accounts, separate tables for each tracker section and role-based access.
 
 Planned separate site URL: <https://manthangandhi.github.io/ankit-kajal-wedding-ledger/>.
 
