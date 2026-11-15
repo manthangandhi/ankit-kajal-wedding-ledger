@@ -1,10 +1,10 @@
-const CACHE_NAME = "ankit-kajal-planner-v2";
+const CACHE_NAME = "ankit-kajal-planner-v4";
 const STATIC_FILES = [
   "./",
   "./index.html",
   "./supabase-config.js",
-  "./styles.css?v=events-v2",
-  "./app.js?v=events-v2",
+  "./styles.css?v=events-v4",
+  "./app.js?v=events-v4",
   "./manifest.webmanifest",
   "./favicon.svg",
   "./icons/icon-192.png",

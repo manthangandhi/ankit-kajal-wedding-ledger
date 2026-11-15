@@ -20,6 +20,8 @@ New signups remain pending until an admin assigns viewer, editor or admin access
 
 For an existing Supabase project, run [`supabase/event_order_migration.sql`](./supabase/event_order_migration.sql) once to enable saved event rearranging. New projects get this column from `schema.sql`.
 
+To enable the admin-only tracker reset button, run [`supabase/reset_wedding_planner.sql`](./supabase/reset_wedding_planner.sql) once in Supabase SQL Editor. The button clears the six planner tables and restores 24 departments and 7 event starters. It preserves profiles and sign-in accounts.
+
 The project URL and publishable key are in [`public/supabase-config.js`](./public/supabase-config.js). They are browser-visible values; never add a service-role key or database password.
 
 ## Vercel project settings

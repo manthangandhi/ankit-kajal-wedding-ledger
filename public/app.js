@@ -107,6 +107,7 @@ let mobileMoreOpen = false;
 let moneyView = "vendors";
 let taskFilters = { status: "", department: "", owner: "", timing: "" };
 let draggedEventId = null;
+let resettingPlanner = false;
 
 function notify(message) {
   const notice = $("notice");
@@ -325,7 +326,7 @@ function renderEventList() {
       const callNumber = String(event.phone || "").replace(/[^+\d]/g, "");
       const art = eventIllustration(event);
       const position = ordered.findIndex((item) => item.id === event.id);
-      return `<article class="run-event ${orderEnabled && canEdit() ? "reorderable" : ""}" data-event-id="${escapeHTML(event.id)}" ${orderEnabled && canEdit() ? "draggable=\"true\"" : ""}><div class="run-event-marker"><span>${String(position + 1).padStart(2, "0")}</span></div><div class="run-event-body"><div class="run-event-heading"><div><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div>${canEdit() && orderEnabled ? `<div class="event-reorder-controls"><button class="table-action" data-event-move="${escapeHTML(event.id)}" data-direction="-1" type="button" aria-label="Move ${escapeHTML(event.name)} earlier" ${position === 0 ? "disabled" : ""}>↑</button><button class="table-action" data-event-move="${escapeHTML(event.id)}" data-direction="1" type="button" aria-label="Move ${escapeHTML(event.name)} later" ${position === ordered.length - 1 ? "disabled" : ""}>↓</button></div>` : ""}<span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span>${art ? `<img class="run-event-art" src="${art}" alt="" loading="lazy">` : ""}</div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div></article>`;
+      return `<article class="run-event ${orderEnabled && canEdit() ? "reorderable" : ""}" data-event-id="${escapeHTML(event.id)}" ${orderEnabled && canEdit() ? "draggable=\"true\"" : ""}><div class="run-event-marker"><span>${String(position + 1).padStart(2, "0")}</span></div><div class="run-event-body ${art ? "has-art" : ""}"><div class="run-event-content"><div class="run-event-heading"><div class="run-event-title"><p class="eyebrow-small">${event.date ? escapeHTML(formatDate(event.date)) : "DATE TO CONFIRM"}</p><h3>${escapeHTML(event.name || "Wedding event")}</h3></div><span class="status-tag ${event.status === "Confirmed" ? "good" : "waiting"}">${escapeHTML(event.status || "Planning")}</span>${canEdit() && orderEnabled ? `<div class="event-reorder-controls"><button class="table-action" data-event-move="${escapeHTML(event.id)}" data-direction="-1" type="button" aria-label="Move ${escapeHTML(event.name)} earlier" ${position === 0 ? "disabled" : ""}>↑</button><button class="table-action" data-event-move="${escapeHTML(event.id)}" data-direction="1" type="button" aria-label="Move ${escapeHTML(event.name)} later" ${position === ordered.length - 1 ? "disabled" : ""}>↓</button></div>` : ""}</div><div class="run-event-details"><span><b>Place</b>${escapeHTML(event.venue || "Venue not set")}</span><span><b>Lead</b>${escapeHTML(event.captain || "Captain not set")}</span><span><b>Contact</b>${callNumber ? `<a href="tel:${escapeHTML(callNumber)}">${escapeHTML(event.phone)}</a>` : "Phone not set"}</span></div>${event.notes ? `<div class="event-run-notes"><b>Run of show</b><div>${escapeHTML(event.notes)}</div></div>` : `<p class="event-notes-empty">Run of show not added yet.</p>`}${canEdit() ? `<div class="run-event-actions"><button class="table-action" data-edit="events" data-id="${escapeHTML(event.id)}" type="button">Edit event & cues</button><button class="table-action delete" data-delete="events" data-id="${escapeHTML(event.id)}" type="button">Delete</button></div>` : ""}</div>${art ? `<div class="run-event-visual" aria-hidden="true"><img class="run-event-art" src="${art}" alt="" loading="lazy"></div>` : ""}</div></article>`;
     }).join("") : `<p class="empty-copy">${searchTerm ? "No matching events." : "No events added yet. Add the real dates and venues when they are confirmed."}</p>`}</div>`;
 }
 
@@ -427,6 +428,7 @@ function renderSettings() {
     <div class="warning-box">Only approved wedding team members can see the guest, vendor and budget details recorded here.</div>
     <div class="settings-grid"><section class="panel"><h3>Download a backup</h3><p>Save a private copy of the wedding records. Guest and vendor details may be included.</p><button class="button button-secondary" id="export-json" type="button">Download JSON backup</button></section>
     ${canEdit() ? `<section class="panel"><h3>Import a backup</h3><p>Import a JSON backup into the wedding planner. Records with matching IDs will be updated.</p><input class="file-input" id="import-json" type="file" accept=".json,application/json"><button class="button button-primary" id="import-button" type="button">Import backup</button></section>` : ""}
+    ${currentProfile?.role === "admin" ? `<section class="panel reset-panel"><p class="eyebrow-small">START OVER</p><h3>Reset the wedding tracker</h3><p>One action clears tasks, guests, vendors and payments, then restores the 24 departments and 7 celebration events. Team accounts and access stay in place. Run <code>supabase/reset_wedding_planner.sql</code> once in Supabase before first use.</p><button class="button button-danger" id="reset-planner" type="button">Clear records & add starter set</button></section>` : ""}
     <section class="panel"><h3>Account access</h3><p>Signed in as <strong>${escapeHTML(currentProfile?.email || currentUser?.email || "")}</strong>. Your current role is <strong>${escapeHTML(currentProfile?.role || "member")}</strong>.</p><p>New sign-ups wait for an admin to grant viewer, editor or admin access.</p></section>
     <section class="panel"><h3>Keep it private</h3><p>Only share access with people helping coordinate the wedding. Guest contact details, rooming and payments should not be copied into public pages or messages.</p></section></div>`;
 }
@@ -474,29 +476,55 @@ function openRecordDialog(type, record = null) {
 }
 
 async function saveRecord(form) {
-  if (!canEdit() || !activeRecordType || !form.reportValidity()) return;
-  const values = new FormData(form);
-  const record = {};
-  for (const [key, , kind] of FIELDS[activeRecordType]) {
-    const value = values.get(key);
-    record[key] = kind === "number" ? (value === "" ? null : Number(value)) : String(value ?? "").trim();
-  }
-  if (activeRecordType === "events" && hasEventOrderColumn()) {
-    const current = listData.events.find((event) => event.id === editingRecordId);
-    record.sort_order = current?.sort_order ?? Math.max(-1, ...listData.events.map((event) => Number(event.sort_order) || 0)) + 1;
-  }
-  record.id = editingRecordId || crypto.randomUUID();
+  if (!canEdit() || !activeRecordType || form.dataset.saving === "true" || !form.reportValidity()) return;
+  form.dataset.saving = "true";
   const button = form.querySelector('[type="submit"]');
-  button.disabled = true;
-  const { error } = await supabase.from(activeRecordType).upsert({ ...record, updated_by: currentUser.id });
-  button.disabled = false;
-  if (error) {
+  if (button) button.disabled = true;
+  try {
+    const values = new FormData(form);
+    const record = {};
+    for (const [key, , kind] of FIELDS[activeRecordType]) {
+      const value = values.get(key);
+      record[key] = kind === "number" ? (value === "" ? null : Number(value)) : String(value ?? "").trim();
+    }
+    if (activeRecordType === "events" && hasEventOrderColumn()) {
+      const current = listData.events.find((event) => event.id === editingRecordId);
+      record.sort_order = current?.sort_order ?? Math.max(-1, ...listData.events.map((event) => Number(event.sort_order) || 0)) + 1;
+    }
+    record.id = editingRecordId || crypto.randomUUID();
+    const { error } = await supabase.from(activeRecordType).upsert({ ...record, updated_by: currentUser.id });
+    if (error) {
+      notify(`Could not save: ${error.message}`);
+      return;
+    }
+    $("record-dialog").close();
+    notify("Your wedding plan has been saved.");
+    await fetchRecords(true);
+  } catch (error) {
     notify(`Could not save: ${error.message}`);
-    return;
+  } finally {
+    delete form.dataset.saving;
+    if (button) button.disabled = false;
   }
-  $("record-dialog").close();
-  notify("Your wedding plan has been saved.");
-  await fetchRecords(true);
+}
+
+async function resetPlanner(button) {
+  if (currentProfile?.role !== "admin" || resettingPlanner) return;
+  const confirmed = confirm("This will permanently delete every task, event, department, guest, vendor and payment. It will then add the 24 starter departments and 7 starter events. Team accounts and access will remain. Continue?");
+  if (!confirmed) return;
+  resettingPlanner = true;
+  button.disabled = true;
+  try {
+    const { error } = await supabase.rpc("reset_wedding_planner");
+    if (error) throw error;
+    await fetchRecords(true);
+    notify("Tracker reset. Starter departments and events are ready.");
+  } catch (error) {
+    notify(`Could not reset the tracker: ${error.message}`);
+  } finally {
+    resettingPlanner = false;
+    if (button.isConnected) button.disabled = false;
+  }
 }
 
 async function deleteRecord(type, id) {
@@ -637,6 +665,8 @@ function bindEvents() {
   $("page-content").addEventListener("click", (event) => {
     if (event.target.closest("#export-json")) exportBackup();
     if (event.target.closest("#import-button")) void importBackup();
+    const resetButton = event.target.closest("#reset-planner");
+    if (resetButton) void resetPlanner(resetButton);
   });
   $("page-content").addEventListener("change", (event) => {
     const role = event.target.closest("[data-role-user]");
@@ -707,7 +737,6 @@ function bindEvents() {
 }
 
 async function start() {
-  bindEvents();
   const config = window.WEDDING_SUPABASE || {};
   if (!config.url || !config.publishableKey || config.url.includes("YOUR_") || config.publishableKey.includes("YOUR_")) {
     showSetupNeeded();

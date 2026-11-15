@@ -566,3 +566,39 @@ body { font-size: 16px; line-height: 1.55; }
   .brand-wordmark b { font-size: 21px; }
   .wordmark-emblem { width: 52px; height: 52px; }
 }
+
+/* Event cards give each celebration's illustration a full, dedicated panel. */
+.run-event-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; padding: 0; }
+.run-event-body.has-art { grid-template-columns: minmax(0, 1fr) minmax(220px, 30%); }
+.run-event-content { min-width: 0; padding: 20px 22px; }
+.run-event-heading { min-height: 0; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 10px 14px; padding: 0; }
+.run-event-title { min-width: 160px; flex: 1 1 55%; }
+.run-event-heading h3 { margin: 4px 0 0; }
+.run-event-heading > .status-tag { flex: 0 0 auto; }
+.event-reorder-controls { flex: 0 0 auto; }
+.event-reorder-controls .table-action { width: 44px; min-height: 44px; }
+.run-event-details { margin-top: 15px; }
+.run-event-visual { position: relative; display: grid; min-height: 250px; overflow: hidden; place-items: center; background: radial-gradient(ellipse at 55% 70%, rgba(177, 127, 76, .20) 0 45%, transparent 45.5%), linear-gradient(145deg, #f7eee3, #efe0d0); }
+.run-event-visual::before { position: absolute; top: 13%; left: 15%; width: 70%; aspect-ratio: 1; border: 1px solid rgba(146, 111, 76, .16); border-radius: 50% 50% 0 0; content: ""; }
+.run-event-art { position: relative; z-index: 1; display: block; width: 100%; height: 270px; object-fit: contain; object-position: center bottom; border-radius: 0; background: transparent; }
+.run-event-actions { margin-top: 14px; }
+.run-event-actions .table-action { min-height: 42px; }
+.reset-panel { grid-column: 1 / -1; border-color: #e7c9c4; background: #fffaf8; }
+.button-danger { border-color: #a3453c; color: #fffaf2; background: #a3453c; }
+.button-danger:hover { background: #843a34; }
+.button-danger:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 720px) {
+  .run-event { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }
+  .run-event-body.has-art { grid-template-columns: minmax(0, 1fr); }
+  .run-event-visual { grid-row: 1; min-height: 0; height: 178px; }
+  .run-event-visual::before { top: 5%; left: calc(50% - 80px); width: 160px; }
+  .run-event-art { width: 100%; height: 178px; }
+  .run-event-content { grid-row: 2; padding: 15px; }
+  .run-event-heading { align-items: flex-start; }
+  .run-event-title { flex-basis: 100%; }
+  .run-event-heading h3 { font-size: 25px; }
+  .run-event-details { grid-template-columns: 1fr 1fr; }
+  .event-reorder-controls { margin-left: auto; }
+  .run-event-actions .table-action { min-height: 44px; }
+  .run-event.reorderable, .run-event.reorderable .run-event-body { cursor: auto; }
+}
